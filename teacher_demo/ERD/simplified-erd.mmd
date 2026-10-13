@@ -1,0 +1,106 @@
+%% JibonJori — SIMPLIFIED presentation ERD (core user/profile/matchmaking slice).
+%% Same source of truth as complete-erd.mmd. Junction table profile_interests is
+%% shown so the many-to-many reads correctly. View at https://mermaid.live or
+%% open ERD/simplified-erd.svg in a browser.
+
+erDiagram
+    education_levels {
+        uuid id PK
+        text slug "UK"
+        text label
+        smallint tier
+    }
+
+    professions {
+        uuid id PK
+        text slug "UK"
+        text label
+        smallint tier
+    }
+
+    interests {
+        uuid id PK
+        text slug "UK"
+        text label
+    }
+
+    profiles {
+        uuid id PK "FK auth.users"
+        citext username "UK"
+        text display_name
+        date dob "18+"
+        gender gender
+        text city
+        uuid education_id FK
+        uuid profession_id FK
+        boolean is_public
+        user_role role
+    }
+
+    partner_preferences {
+        uuid profile_id PK "FK profiles"
+        smallint age_min
+        smallint age_max
+        text_array genders
+        text_array locations
+    }
+
+    profile_interests {
+        uuid profile_id PK FK
+        uuid interest_id PK FK
+    }
+
+    media {
+        uuid id PK
+        uuid profile_id FK
+        text storage_path "UK"
+        media_kind kind
+        boolean is_primary
+    }
+
+    interactions {
+        uuid actor_profile_id PK FK
+        uuid target_profile_id PK FK
+        smallint value "-1 like-dislike-fav"
+    }
+
+    ratings {
+        uuid id PK
+        uuid rater_profile_id FK
+        uuid rated_profile_id FK
+        smallint score "1..5"
+    }
+
+    comments {
+        uuid id PK
+        uuid author_profile_id FK
+        uuid target_profile_id FK
+        text body
+    }
+
+    compatibility_scores {
+        uuid profile_a_id PK FK
+        uuid profile_b_id PK FK
+        smallint overall_score
+        text model_version
+        text inputs_hash
+    }
+
+    notifications {
+        uuid id PK
+        uuid profile_id FK
+        notification_type type
+        timestamptz read_at
+    }
+
+    education_levels ||--o{ profiles : "education_id"
+    professions ||--o{ profiles : "profession_id"
+    profiles ||--|| partner_preferences : "one-to-one"
+    profiles ||--o{ profile_interests : "one-to-many"
+    interests ||--o{ profile_interests : "one-to-many"
+    profiles ||--o{ media : "one-to-many"
+    profiles ||--o{ interactions : "actor and target"
+    profiles ||--o{ ratings : "rater and rated"
+    profiles ||--o{ comments : "author and target"
+    profiles ||--o{ compatibility_scores : "pair cache a-b"
+    profiles ||--o{ notifications : "one-to-many"

@@ -1,0 +1,219 @@
+%% JibonJori — COMPLETE Entity Relationship Diagram.
+%% Source of truth: supabase/migrations/20260927000001_foundation.sql,
+%% 20260927000002_activity.sql, 20260927000009_ml_artifacts.sql,
+%% 20260927000010_spec_parity_constraints.sql, 20260927000012_compatibility_parity.sql.
+%% auth_users is the Supabase Auth schema (external); shown because two tables reference it.
+%% View: paste this file into https://mermaid.live or open ERD/complete-erd.svg in a browser.
+
+erDiagram
+    auth_users {
+        uuid id PK
+    }
+
+    education_levels {
+        uuid id PK
+        text slug "UK"
+        text label
+        smallint tier "0..10"
+        timestamptz created_at
+    }
+
+    professions {
+        uuid id PK
+        text slug "UK"
+        text label
+        smallint tier "0..10"
+        timestamptz created_at
+    }
+
+    interests {
+        uuid id PK
+        text slug "UK"
+        text label
+        timestamptz created_at
+    }
+
+    profiles {
+        uuid id PK "FK auth.users"
+        citext username "UK"
+        text display_name
+        date dob "adult-only"
+        gender gender
+        smallint height_cm "100..250"
+        marital_status marital_status
+        text religion
+        text caste_community
+        uuid education_id "FK, RESTRICT"
+        text education_detail
+        uuid profession_id "FK, RESTRICT"
+        text profession_detail
+        text income_band
+        text city
+        text district
+        text country
+        float8 lat "paired with lng"
+        float8 lng "paired with lat"
+        boolean location_consent
+        boolean show_exact_location
+        text about
+        jsonb lifestyle
+        boolean is_public
+        photo_visibility photo_visibility
+        smallint completeness "0..100"
+        user_role role
+        boolean is_suspended
+        timestamptz deleted_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    partner_preferences {
+        uuid profile_id PK "FK profiles CASCADE"
+        smallint age_min "18..100"
+        smallint age_max "18..100"
+        text_array genders
+        uuid_array education_ids
+        uuid_array profession_ids
+        text_array locations
+        jsonb must_have
+        jsonb dealbreakers
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    profile_interests {
+        uuid profile_id PK "FK profiles CASCADE"
+        uuid interest_id PK "FK interests RESTRICT"
+        timestamptz created_at
+    }
+
+    media {
+        uuid id PK
+        uuid profile_id FK "CASCADE"
+        text storage_path "UK"
+        media_kind kind
+        text mime
+        integer bytes "1..10MiB"
+        boolean is_primary "one per profile"
+        timestamptz created_at
+    }
+
+    interactions {
+        uuid actor_profile_id PK "FK profiles CASCADE"
+        uuid target_profile_id PK "FK profiles CASCADE"
+        smallint value "-1,1,2"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    ratings {
+        uuid id PK
+        uuid rater_profile_id FK "CASCADE"
+        uuid rated_profile_id FK "CASCADE"
+        smallint score "1..5"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    comments {
+        uuid id PK
+        uuid author_profile_id FK "CASCADE"
+        uuid target_profile_id FK "CASCADE"
+        text body "1..1000"
+        timestamptz created_at
+    }
+
+    compatibility_scores {
+        uuid profile_a_id PK "FK, canonical a-b"
+        uuid profile_b_id PK "FK, canonical a-b"
+        smallint overall_score "0..100"
+        smallint interests_score "0..100"
+        smallint education_score "0..100"
+        smallint profession_score "0..100"
+        smallint location_score "0..100"
+        smallint preference_score "0..100"
+        text model_version
+        text inputs_hash
+        timestamptz computed_at
+    }
+
+    notifications {
+        uuid id PK
+        uuid profile_id FK "CASCADE, nullable"
+        notification_type type
+        jsonb payload
+        timestamptz read_at
+        timestamptz created_at
+    }
+
+    chat_conversations {
+        uuid id PK
+        uuid profile_id FK "CASCADE"
+        text title
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    chat_messages {
+        uuid id PK
+        uuid conversation_id FK "CASCADE"
+        chat_role role
+        text content "1..8000"
+        text model
+        integer tokens
+        timestamptz created_at
+    }
+
+    audit_logs {
+        uuid id PK
+        uuid actor_user_id "FK auth.users SET NULL"
+        text action
+        text target
+        jsonb meta
+        inet ip
+        timestamptz created_at
+    }
+
+    curated_videos {
+        uuid id PK
+        text youtube_id "UK"
+        text title
+        text description
+        text category
+        boolean is_published
+        uuid created_by "FK profiles SET NULL"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    ml_artifacts {
+        uuid id PK
+        text name
+        text version "UK"
+        text feature_version
+        jsonb artifact
+        boolean is_active "one active per name"
+        timestamptz trained_at
+        timestamptz created_at
+    }
+
+    auth_users ||--o{ profiles : "profiles.id"
+    education_levels ||--o{ profiles : "education_id RESTRICT"
+    professions ||--o{ profiles : "profession_id RESTRICT"
+    profiles ||--|| partner_preferences : "profile_id CASCADE"
+    profiles ||--o{ profile_interests : "profile_id CASCADE"
+    interests ||--o{ profile_interests : "interest_id RESTRICT"
+    profiles ||--o{ media : "profile_id CASCADE"
+    profiles ||--o{ interactions : "actor CASCADE"
+    profiles ||--o{ interactions : "target CASCADE"
+    profiles ||--o{ ratings : "rater CASCADE"
+    profiles ||--o{ ratings : "rated CASCADE"
+    profiles ||--o{ comments : "author CASCADE"
+    profiles ||--o{ comments : "target CASCADE"
+    profiles ||--o{ compatibility_scores : "profile_a CASCADE"
+    profiles ||--o{ compatibility_scores : "profile_b CASCADE"
+    profiles ||--o{ notifications : "profile_id CASCADE"
+    profiles ||--o{ chat_conversations : "profile_id CASCADE"
+    chat_conversations ||--o{ chat_messages : "conversation_id CASCADE"
+    profiles ||--o{ curated_videos : "created_by SET NULL"
+    auth_users ||--o{ audit_logs : "actor SET NULL"
