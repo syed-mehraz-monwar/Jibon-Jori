@@ -1,0 +1,1341 @@
+JibonJori – Architecture & Implementation Plan
+
+Status: Architecture approved. Database/ERD approved. Prisma implementation is the next stage.
+Important: This document describes the approved architecture and implementation direction. Do not change architectural decisions without explicit approval.
+
+0. Project Overview
+
+JibonJori – AI Assisted Matrimony Platform is a modern web-based matrimonial platform where users can:
+
+Create verified matrimonial profiles
+Manage personal information and partner preferences
+Search and filter potential partners
+Receive AI-assisted compatibility scores and recommendations
+Like, dislike, favorite, rate, and comment on profiles
+Receive real-time notifications
+Use an AI chatbot for profile and matchmaking assistance
+Upload profile photos/documents
+View location information using Google Maps
+View curated YouTube content
+Generate reports from real application data
+Use secure authentication with email/phone OTP
+Maintain revocable server-side sessions
+
+The project is designed as a containerized modular monolith, not a microservice architecture.
+
+1. Architecture Overview
+1.1 High-Level Architecture
+                    ┌──────────────────────────┐
+                    │        React SPA          │
+                    │ React + Vite + TypeScript │
+                    │ Tailwind + Sass + GSAP    │
+                    └────────────┬─────────────┘
+                                 │
+                    REST / GraphQL / Socket.io
+                                 │
+                                 ▼
+                    ┌──────────────────────────┐
+                    │      Express API          │
+                    │ Node.js + TypeScript      │
+                    │ REST + GraphQL + Socket.io│
+                    └────────────┬─────────────┘
+                                 │
+              ┌──────────────────┼──────────────────┐
+              │                  │                  │
+              ▼                  ▼                  ▼
+      ┌──────────────┐   ┌───────────────┐   ┌──────────────┐
+      │ PostgreSQL   │   │ Firebase      │   │ External AI  │
+      │ + Prisma     │   │ Storage       │   │ / LLM API    │
+      └──────────────┘   └───────────────┘   └──────────────┘
+              │
+              │
+              ▼
+       Application Data
+
+
+External integrations:
+- Google Maps API
+- YouTube embeds
+- Email/SMS OTP provider
+1.2 Architectural Style
+
+JibonJori uses a:
+
+3-tier containerized modular monolith with clear internal service boundaries.
+
+The main application consists of:
+
+React frontend
+Express backend
+PostgreSQL database
+
+External services are integrated through controlled backend/frontend adapters.
+
+Why a modular monolith?
+
+The project requires:
+
+REST API
+GraphQL API
+real-time communication
+PostgreSQL
+Firebase Storage
+AI/LLM integration
+on-device ML
+Google Maps
+reporting
+Docker
+
+A modular monolith provides enough architectural separation while keeping the project manageable for a university/course project.
+
+Microservices are explicitly not required for MVP.
+
+2. Technology Stack
+2.1 Frontend
+React.js
+TypeScript
+Vite
+React Router
+Tailwind CSS
+Sass/SCSS
+GSAP
+Socket.io Client
+TensorFlow.js for browser/on-device ML integration
+2.2 Backend
+Node.js
+TypeScript
+Express.js
+REST API
+GraphQL
+Socket.io
+Zod for request validation
+Prisma ORM
+2.3 Database
+PostgreSQL
+Prisma ORM
+Prisma Migrate
+UUID primary keys
+PostgreSQL-specific features where appropriate
+2.4 Storage
+Firebase Storage
+
+PostgreSQL stores metadata/references only.
+
+Binary files must never be stored directly in PostgreSQL.
+
+2.5 AI/ML
+Server-side LLM API
+TensorFlow.js/browser-based on-device model
+Deterministic compatibility engine
+AI chatbot
+2.6 External Integrations
+Google Maps API
+YouTube embeds
+Email/SMS OTP provider
+Firebase
+2.7 Reporting
+Crystal Reports
+Reports must be generated from real application data.
+2.8 Deployment
+Docker
+Docker Compose
+Git
+GitHub
+Nginx for production frontend static files
+3. Frontend Architecture
+3.1 Frontend Structure
+
+Proposed structure:
+
+frontend/
+└── src/
+    ├── assets/
+    ├── components/
+    ├── pages/
+    ├── layouts/
+    ├── hooks/
+    ├── services/
+    ├── store/
+    ├── utils/
+    ├── types/
+    ├── validation/
+    ├── ml/
+    ├── animations/
+    ├── routes/
+    └── styles/
+3.2 Responsibilities
+pages/
+
+Route-level screens.
+
+Examples:
+
+Home
+Login
+Register
+OTP Verification
+Profile
+Profile Detail
+Edit Profile
+Partner Preferences
+Search
+Recommendations
+Notifications
+Chatbot
+Reports
+Admin
+Settings
+components/
+
+Reusable UI components.
+
+Examples:
+
+ProfileCard
+SearchFilters
+Pagination
+RatingStars
+CommentList
+CommentForm
+CompatibilityScore
+ScoreBreakdown
+DatePicker
+MapView
+PhotoGallery
+NotificationItem
+LoadingState
+EmptyState
+ErrorState
+services/
+
+All API communication.
+
+Components should not contain raw API requests.
+
+hooks/
+
+Reusable React logic.
+
+Examples:
+
+authentication
+profile data
+search
+pagination
+notifications
+Socket.io subscriptions
+store/
+
+Use lightweight state management.
+
+Context or Zustand may be used.
+
+Do not introduce Redux unless the application genuinely requires it.
+
+ml/
+
+Contains browser/on-device ML loading and inference logic.
+
+animations/
+
+GSAP animations and reusable animation utilities.
+
+4. Frontend Styling Strategy
+
+JibonJori uses both Tailwind CSS and Sass.
+
+Tailwind CSS
+
+Use primarily for:
+
+layout
+spacing
+responsive design
+utility styling
+common component structures
+Sass/SCSS
+
+Use for:
+
+theme variables
+complex component styles
+reusable style modules
+advanced visual effects
+GSAP
+
+Use for:
+
+page transitions
+profile-card animations
+subtle entrance animations
+scroll animations
+important interaction animations
+
+Do not use GSAP unnecessarily for every small UI interaction.
+
+5. Backend Architecture
+
+The backend follows a layered modular architecture.
+
+api/
+└── src/
+    ├── config/
+    ├── routes/
+    ├── controllers/
+    ├── services/
+    ├── repositories/
+    ├── middleware/
+    ├── validators/
+    ├── graphql/
+    ├── realtime/
+    ├── ai/
+    ├── storage/
+    ├── reports/
+    ├── utils/
+    ├── types/
+    └── app.ts
+5.1 Request Flow
+Request
+   ↓
+Route
+   ↓
+Middleware
+   ↓
+Validation
+   ↓
+Controller
+   ↓
+Service
+   ↓
+Repository / Prisma
+   ↓
+PostgreSQL
+
+Business logic belongs in services rather than controllers.
+
+Database access should be isolated through Prisma/repository logic.
+
+6. REST API
+
+REST is a required API layer.
+
+REST should handle the primary application operations, including:
+
+authentication
+OTP
+sessions
+profiles
+preferences
+search
+interactions
+ratings
+comments
+notifications
+media
+compatibility
+chatbot
+admin operations
+
+Use consistent response structures.
+
+Example:
+
+{
+  "data": {},
+  "error": null
+}
+
+Errors should use appropriate HTTP status codes.
+
+Never expose:
+
+stack traces
+passwords
+OTP codes
+refresh tokens
+API secrets
+private internal data
+7. GraphQL API
+
+GraphQL is also required by the project.
+
+GraphQL should coexist with REST rather than replacing it.
+
+The initial GraphQL scope should focus on useful read/query operations.
+
+Examples:
+
+profile queries
+search queries
+recommendations
+compatibility data
+notification data
+
+Do not unnecessarily duplicate every REST endpoint as a GraphQL mutation.
+
+GraphQL scope can expand later if required by the course specification.
+
+8. Real-Time Architecture
+
+Socket.io is used for real-time functionality.
+
+Potential real-time events include:
+
+comments
+likes/dislikes/favorites
+notifications
+rating updates
+compatibility/recommendation updates where useful
+
+Architecture:
+
+React
+  │
+  │ Socket.io Client
+  ▼
+Express API
+  │
+  │ Socket.io
+  ▼
+Application Services
+  │
+  ▼
+PostgreSQL
+
+Database writes remain authoritative.
+
+Socket.io is used for real-time delivery, not as the source of truth.
+
+9. Authentication & Session Architecture
+
+Authentication supports:
+
+email registration
+phone registration
+email OTP
+phone OTP
+login
+logout
+session management
+protected routes
+Security rules
+
+Passwords must never be stored in plaintext.
+
+Use a secure password hashing algorithm such as:
+
+Argon2id
+or bcrypt
+
+OTP codes must be hashed before storage.
+
+Refresh tokens must be hashed before storage.
+
+Sessions must be revocable.
+
+Logout should revoke the session rather than simply deleting it.
+
+Authentication secrets must remain server-side.
+
+10. PostgreSQL Architecture
+
+PostgreSQL is the primary application database.
+
+Prisma is the ORM.
+
+Prisma Migrate is the migration system.
+
+Database schema changes must be version-controlled.
+
+Do not manually modify production database structures outside migrations.
+
+11. Approved MVP Database
+
+The approved MVP contains 18 models/tables.
+
+11.1 Tables
+1.  users
+2.  otp_verifications
+3.  sessions
+4.  profiles
+5.  partner_preferences
+6.  interests
+7.  profile_interests
+8.  education_levels
+9.  professions
+10. media
+11. interactions
+12. ratings
+13. comments
+14. compatibility_scores
+15. notifications
+16. chat_conversations
+17. chat_messages
+18. audit_logs
+12. Database Relationships
+users
+  │
+  ├── 1:1 profiles
+  │        │
+  │        ├── 1:1 partner_preferences
+  │        │
+  │        ├── M:N interests
+  │        │       └── profile_interests
+  │        │
+  │        ├── N:1 education_levels
+  │        ├── N:1 professions
+  │        ├── 1:N media
+  │        ├── 1:N interactions
+  │        ├── 1:N ratings
+  │        ├── 1:N comments
+  │        ├── 1:N notifications
+  │        ├── 1:N chat_conversations
+  │        └── N:M compatibility_scores
+  │
+  ├── 1:N otp_verifications
+  ├── 1:N sessions
+  └── 1:N audit_logs
+
+chat_conversations
+  └── 1:N chat_messages
+13. Database Design Decisions
+13.1 Users
+
+users contains:
+
+identity
+authentication credentials
+role
+status
+verification timestamps
+soft-delete information
+
+A user must have at least one contact method:
+
+email IS NOT NULL OR phone IS NOT NULL
+
+Username must be unique.
+
+Email and phone must be uniquely enforced when present.
+
+14. Profiles
+
+Each user has one matrimonial profile.
+
+Important fields include:
+
+display name
+date of birth
+gender
+height
+marital status
+religion
+caste/community
+education
+profession
+income band
+location
+coordinates
+lifestyle
+profile visibility
+photo visibility
+profile completeness
+
+Users must be adults according to the application's approved age policy.
+
+Latitude and longitude must either both be NULL or both be populated.
+
+Exact location must only be exposed according to the user's consent and visibility settings.
+
+15. Partner Preferences
+
+Each profile has one partner-preferences record.
+
+Preferences include:
+
+minimum age
+maximum age
+preferred genders
+preferred education levels
+preferred professions
+preferred locations
+must-have preferences
+dealbreakers
+
+The MVP uses PostgreSQL arrays and JSONB where approved.
+
+Application-level Zod validation must enforce the structure of JSON fields.
+
+16. Interests
+
+Interests use a normalized many-to-many design.
+
+profiles
+    │
+    │
+profile_interests
+    │
+    │
+interests
+
+Do not store profile interests as an unstructured text array.
+
+This provides:
+
+referential integrity
+consistent interest identifiers
+filtering
+reverse queries
+compatibility calculations
+17. Education and Profession Lookups
+
+Education levels and professions are lookup tables.
+
+They contain:
+
+UUID
+slug
+label
+tier where applicable
+created timestamp
+
+Used for:
+
+profile classification
+filtering
+compatibility scoring
+
+Lookup records should not be casually deleted if referenced by profiles.
+
+18. Media & Firebase Storage
+
+Actual uploaded files are stored in Firebase Storage.
+
+PostgreSQL stores only metadata/reference information.
+
+The media model stores information such as:
+
+profile
+Firebase path
+file type
+MIME type
+file size
+primary-photo status
+creation time
+
+Never store image/document binaries directly in PostgreSQL.
+
+19. Interactions
+
+Likes, dislikes, and favorites use one unified table:
+
+interactions
+
+Values:
+
+-1 = dislike
+ 1 = like
+ 2 = favorite
+
+A user/profile has one current stance toward another profile.
+
+The primary key is:
+
+(actor_profile_id, target_profile_id)
+
+A favorite may imply a like at the application level.
+
+Unlike should remove the interaction or otherwise update the stance according to the approved service behavior.
+
+Users cannot interact with themselves.
+
+20. Ratings
+
+Profiles can receive ratings from other profiles.
+
+Rating:
+
+1–5
+
+A profile can rate another profile only once at a time.
+
+Rating averages should be calculated from source ratings.
+
+Do not store unnecessary derived aggregate values in the database unless explicitly approved.
+
+21. Comments
+
+MVP comments are intentionally flat.
+
+There is no parent_id in the MVP.
+
+Comments contain:
+
+author
+target profile
+body
+created timestamp
+
+Threaded comments may be introduced later if required.
+
+22. Compatibility System
+
+Compatibility scores are stored in:
+
+compatibility_scores
+
+The table is a current, recalculable cache, not an immutable historical record.
+
+The MVP does not store personality scores.
+
+Initial compatibility factors may include:
+
+overall score
+interests score
+education score
+profession score
+location score
+preference score
+
+Scores are stored with:
+
+model version
+inputs hash
+computation timestamp
+23. Compatibility Pair Canonicalization
+
+Compatibility between two profiles is unordered.
+
+Therefore:
+
+Profile A + Profile B
+
+and:
+
+Profile B + Profile A
+
+must refer to the same database row.
+
+The system must canonicalize the pair:
+
+smaller UUID → profile_a_id
+larger UUID  → profile_b_id
+
+The application service must enforce this consistently.
+
+A database-level constraint should also be used where PostgreSQL/Prisma implementation allows it.
+
+24. Compatibility Recalculation
+
+Compatibility should not be precomputed for every possible pair.
+
+The system should calculate compatibility on demand and/or through controlled recommendation jobs.
+
+Use:
+
+inputs_hash
+
+to determine whether the underlying inputs have changed.
+
+If inputs have not changed, the cached result can be reused.
+
+If inputs change, the compatibility score can be recalculated.
+
+This prevents unnecessary N² computation.
+
+25. Notifications
+
+Notifications are stored persistently.
+
+Notification types may include:
+
+like
+comment
+rating
+match
+security
+system
+
+Notifications should support:
+
+unread state
+read timestamp
+chronological listing
+
+Socket.io may be used to deliver notifications immediately, but PostgreSQL remains the durable source of truth.
+
+26. AI Chatbot
+
+The chatbot uses:
+
+chat_conversations
+chat_messages
+
+The database stores conversation history.
+
+The LLM API is accessed server-side.
+
+The client must never receive or expose the LLM API secret.
+
+The chatbot may assist with:
+
+profile creation
+profile improvement
+partner preferences
+platform help
+matchmaking assistance
+
+The chatbot must not have unrestricted database access.
+
+Backend services must provide only the approved information required for each AI task.
+
+The chatbot must never receive database dumps or unrelated users' private data.
+
+27. Audit Logging
+
+Security-sensitive actions are recorded in:
+
+audit_logs
+
+Examples:
+
+auth.login
+auth.logout
+auth.otp_request
+auth.otp_abuse
+admin.suspend
+admin.restore
+profile.update
+security.change
+
+Audit logs are append-only from the application's perspective.
+
+They should not be casually deleted or modified.
+
+28. PostgreSQL Extensions and Raw SQL
+
+Prisma cannot express every PostgreSQL-specific feature required by the approved design.
+
+The implementation must identify and handle features such as:
+
+pgcrypto for UUID generation where required
+citext
+partial unique indexes
+partial indexes
+advanced CHECK constraints
+canonical compatibility pair constraint
+any other PostgreSQL-specific constraints Prisma cannot represent directly
+
+These must be implemented through documented supplementary raw SQL migrations where necessary.
+
+Do not silently remove database-level constraints simply because Prisma cannot represent them.
+
+29. Database Security
+
+Never store:
+
+plaintext passwords
+plaintext OTP codes
+plaintext refresh tokens
+API secrets
+Firebase private credentials
+
+Database records should contain hashes/references where appropriate.
+
+Sensitive secrets belong in environment variables or secure deployment secrets.
+
+30. Validation Strategy
+
+Validation occurs at multiple layers.
+
+Frontend
+
+Used for:
+
+immediate UX feedback
+required fields
+formatting
+basic input constraints
+Backend
+
+The backend is authoritative.
+
+Use Zod or equivalent validation for:
+
+API requests
+profile data
+partner preferences
+JSONB structures
+query parameters
+authentication inputs
+Database
+
+Database constraints provide the final integrity layer.
+
+Never rely solely on frontend validation.
+
+31. API Security
+
+The backend must:
+
+authenticate protected requests
+authorize resource access
+validate all inputs
+use parameterized database queries through Prisma
+rate-limit OTP requests
+limit OTP attempts
+prevent username enumeration where appropriate
+protect private profile data
+prevent unauthorized media access
+avoid leaking internal errors
+avoid returning sensitive fields
+32. Location Architecture
+
+Location is stored initially as:
+
+city
+district
+country
+lat
+lng
+
+PostGIS is intentionally not part of MVP.
+
+Google Maps can be used for:
+
+location selection
+map display
+location assistance
+location-based matching
+
+Exact coordinates must respect:
+
+location consent
+visibility settings
+privacy rules
+33. AI/ML Architecture
+
+JibonJori uses two AI-related components.
+
+Server-side LLM
+
+Used for:
+
+chatbot
+profile assistance
+matchmaking explanations
+AI-assisted recommendations
+
+All LLM credentials remain server-side.
+
+On-device ML
+
+The browser may run an approved TensorFlow.js-compatible model for on-device compatibility assistance.
+
+The implementation must clearly document the model and its role.
+
+If the course evaluator requires a specific TensorFlow Lite/on-device implementation, the implementation should be verified against that requirement before final submission.
+
+A deterministic rules-based compatibility fallback should remain available where appropriate.
+
+34. Google Maps
+
+Google Maps integration is used for:
+
+location selection
+map display
+location-based matching support
+
+Do not expose private coordinates unnecessarily.
+
+Use consent and visibility rules before displaying exact location.
+
+35. YouTube Integration
+
+YouTube videos should use embeds.
+
+The project does not require the YouTube Data API unless a future requirement specifically demands it.
+
+36. Reporting
+
+Crystal Reports is part of the project requirements.
+
+Reports must use real application data.
+
+Initial reporting categories may include:
+
+user reports
+matchmaking reports
+compatibility reports
+ratings reports
+administrative reports
+
+report_runs is not part of the MVP database.
+
+Reporting infrastructure should be added during the reporting phase without unnecessarily expanding the core MVP schema.
+
+37. Docker Architecture
+
+Development and production should be container-friendly.
+
+Expected services:
+
+docker-compose
+│
+├── web
+│   └── React / Nginx
+│
+├── api
+│   └── Node.js / Express
+│
+└── db
+    └── PostgreSQL
+
+External services remain external:
+
+Firebase
+Google Maps
+LLM provider
+OTP provider
+
+Development may use Vite directly for frontend development while the API and database run through Docker.
+
+Production should use a built React application served through Nginx.
+
+38. Environment Configuration
+
+All secrets must come from environment variables.
+
+Examples:
+
+DATABASE_URL
+SESSION_SECRET
+JWT_SECRET
+FIREBASE_PROJECT_ID
+FIREBASE_CLIENT_EMAIL
+FIREBASE_PRIVATE_KEY
+LLM_API_KEY
+GOOGLE_MAPS_API_KEY
+OTP_PROVIDER_KEY
+
+Actual secrets must never be committed to Git.
+
+.env files containing secrets must remain gitignored.
+
+Provide .env.example with placeholder values.
+
+39. Git & GitHub
+
+Use Git for all project changes.
+
+Commit logical units of work.
+
+Do not commit:
+
+.env
+API keys
+Firebase credentials
+passwords
+OTP secrets
+private certificates
+generated sensitive data
+
+The repository should contain useful documentation for setup and development.
+
+40. Testing Strategy
+
+Testing should be introduced progressively.
+
+Backend
+
+Test:
+
+authentication
+OTP
+sessions
+profile creation
+profile updates
+search
+interactions
+ratings
+comments
+compatibility
+authorization
+Frontend
+
+Test important:
+
+forms
+validation
+authentication flows
+profile interactions
+search/filter behavior
+compatibility display
+Integration
+
+Verify:
+
+Frontend
+   ↓
+API
+   ↓
+Prisma
+   ↓
+PostgreSQL
+
+and external integrations where practical.
+
+41. Error Handling
+
+Backend errors should use a centralized error-handling mechanism.
+
+Do not expose:
+
+stack traces
+SQL details
+internal paths
+environment variables
+secret values
+
+Production errors should be safe and user-friendly.
+
+Development logs may contain additional debugging information, but secrets must never be logged.
+
+42. Frontend UI States
+
+Every data-driven screen should support:
+
+Loading
+Empty
+Error
+Success
+
+For example:
+
+Search
+├── Loading profiles
+├── No profiles found
+├── Search error
+└── Profiles displayed
+
+Avoid screens that silently fail or remain blank.
+
+43. Accessibility & Responsive Design
+
+The application should be responsive across:
+
+desktop
+tablet
+mobile
+
+Important controls should have:
+
+accessible labels
+keyboard support
+appropriate focus states
+readable contrast
+usable touch targets
+44. Privacy Model
+
+The platform contains sensitive matrimonial profile information.
+
+Privacy must be considered throughout the architecture.
+
+Important controls include:
+
+is_public
+photo_visibility
+location_consent
+show_exact_location
+authenticated access
+authorization checks
+
+Do not expose private profile information through REST, GraphQL, Socket.io, or AI services without authorization.
+
+45. Explicitly Postponed Features
+
+The following are not part of the MVP database:
+
+report_runs
+user_blocks
+profile_views
+compatibility_history
+match_events
+PostGIS
+threaded comments
+
+These may be introduced later if the course requirements require them.
+
+Do not implement them prematurely.
+
+46. Avoided Over-Engineering
+
+The MVP intentionally avoids:
+
+microservices
+Redux unless needed
+PostGIS on day one
+full messaging/presence infrastructure
+native mobile applications
+unnecessary external notification services
+unnecessary YouTube APIs
+duplicate REST and GraphQL implementations
+excessive database normalization where it adds no MVP value
+
+The architecture should remain maintainable and understandable for a university project.
+
+47. Implementation Order
+
+Implementation should proceed in controlled stages.
+
+Phase 0 – Approval & Setup
+Requirements review
+Architecture approval
+Database/ERD approval
+Create Prisma schema
+Review Prisma schema
+Identify required raw SQL
+Create initial migration
+Establish project structure
+Docker development setup
+Environment configuration
+Health checks
+Phase 1 – Identity & Profiles
+User registration
+Email/phone OTP
+Authentication
+Sessions
+Logout/revocation
+Username availability
+Profile creation
+Profile editing
+Partner preferences
+Firebase media upload
+Phase 2 – Discovery & Interaction
+Search
+Filters
+Pagination
+Profile discovery
+Likes
+Dislikes
+Favorites
+Ratings
+Comments
+Notifications
+Socket.io real-time events
+Phase 3 – AI Core
+Compatibility engine
+Compatibility score cache
+Compatibility breakdown
+AI recommendation explanations
+LLM chatbot
+On-device ML integration
+Rules-based fallback
+Phase 4 – Maps & Media
+Google Maps
+Location selection
+Location-based matching
+YouTube embeds
+Media management
+Phase 5 – GraphQL & Reporting
+GraphQL queries
+GraphQL expansion where useful
+Crystal Reports datasets
+Crystal Reports templates
+Admin/reporting screens
+Phase 6 – Hardening & Deployment
+Security review
+Authorization review
+Validation review
+Test coverage
+Performance review
+Docker production build
+Documentation
+ERD documentation
+API documentation
+Authentication documentation
+AI documentation
+Realtime documentation
+Deployment documentation
+Final course-requirement verification
+48. Current Project Status
+
+The following are approved:
+
+Requirements          ✅
+Project concept       ✅
+Technology direction  ✅
+Architecture          ✅
+Database/ERD          ✅
+MVP database scope    ✅
+
+The following is the next task:
+
+Prisma schema
+
+Before creating migrations:
+
+Generate the Prisma schema.
+Review every model.
+Verify every relationship.
+Verify indexes and unique constraints.
+Identify PostgreSQL features Prisma cannot express.
+Define required raw SQL.
+Wait for approval.
+
+Do not run database migrations until the Prisma schema has been explicitly reviewed and approved.
+
+49. Architecture Change Policy
+
+This document is the architectural source of truth.
+
+If an implementation agent believes a change is necessary:
+
+Explain the problem.
+Explain the proposed change.
+Explain its impact.
+Wait for approval if it changes an approved architectural decision.
+
+Do not silently:
+
+add database tables
+remove database tables
+change database relationships
+change the technology stack
+introduce microservices
+replace Prisma
+introduce PostGIS
+add new external services
+expose private data
+change authentication architecture
+
+without explicit approval.
+
+50. Core Architectural Principle
+
+Build JibonJori incrementally.
+
+The project should prioritize:
+
+Correctness
+   ↓
+Security
+   ↓
+Maintainability
+   ↓
+Requirement coverage
+   ↓
+User experience
+   ↓
+Performance optimization
+
+Do not optimize prematurely.
+
+Do not over-engineer the MVP.
+
+Every implementation decision should be traceable to either:
+
+an approved JibonJori requirement,
+an approved architectural decision,
+a necessary security/integrity requirement,
+or an explicitly approved change.

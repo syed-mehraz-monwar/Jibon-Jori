@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only manifest overlay for local manual phone testing.
+
+  It does exactly one thing: point the debug build at the debug-only network security
+  config, which permits cleartext HTTP to the development PC on the local network.
+
+  Why an overlay rather than editing the main manifest:
+    - the release build must keep Android's default cleartext policy, so nothing here
+      may leak into `src/main`;
+    - it is a local test accommodation, not a product behaviour.
+
+  No permission is added here. The app requests only `android.permission.INTERNET`,
+  which the main manifest already declares for a networked application.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application android:networkSecurityConfig="@xml/network_security_config" />
+
+</manifest>

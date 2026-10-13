@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Default network security configuration.
+
+  This is the policy for every build type that does not provide its own copy, which
+  means it is the policy a RELEASE APK ships with: cleartext HTTP is denied outright
+  and only the system trust store is honoured.
+
+  The `debug` source set overrides this file with its own copy that opens cleartext
+  for a single development host, so local phone testing keeps working while release
+  builds stay encrypted end to end. Release builds additionally refuse to be built
+  against a non-HTTPS origin; see `frontend/scripts/build-android.mjs`.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">JibonJori</string>
+    <string name="title_activity_main">JibonJori</string>
+    <string name="package_name">com.jibonjori.app</string>
+    <string name="custom_url_scheme">com.jibonjori.app</string>
+</resources>

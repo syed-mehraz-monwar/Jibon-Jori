@@ -1,0 +1,132 @@
+# D-50: continuous-integration pipeline.
+#
+# Every command below has been executed locally and passes; this file wires the same
+# commands into a runner. It is NOT evidence of a working pipeline, because no runner
+# exists in the development environment - it was authored and its YAML was parsed, but
+# it has never been executed by GitHub Actions. The honest status for D-50 is therefore
+# "authored, unexecuted", not "verified".
+#
+# Notes that matter for correctness on a real runner:
+#   * There is no first-party backend service any more: the frontend calls Supabase
+#     directly (PostgREST, pg_graphql, Auth, Storage, Realtime). The database lives in
+#     `supabase/migrations` and cannot be applied to a vanilla Postgres service, because
+#     the migrations extend Supabase's own `auth` and `storage` schemas. The database
+#     gates therefore start the official local stack, which is what applies them.
+#   * The frontend unit/integration suite runs against an in-memory Supabase double, so
+#     it needs no project and no credentials. `vitest.config.ts` supplies placeholder
+#     `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` values for the modules that read
+#     the environment at import time.
+#   * No secret is committed or referenced: the only credentials here are the local
+#     stack's own well-known throwaway defaults.
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  database:
+    name: database gates
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supabase
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start the local stack (applies every migration)
+        run: supabase start
+
+      - name: The migrations applied without error and the core tables exist
+        run: |
+          psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" \
+            -v ON_ERROR_STOP=1 \
+            -c "select table_name from information_schema.tables where table_schema = 'public' order by 1;"
+
+      - name: The expected public tables are all present
+        run: |
+          psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" \
+            -v ON_ERROR_STOP=1 \
+            -tAc "select count(*) from information_schema.tables where table_schema = 'public' and table_name in ('profiles','partner_preferences','profile_interests','media','interactions','ratings','comments','compatibility_scores','notifications','chat_conversations','chat_messages','curated_videos','ml_artifacts','education_levels','professions','interests');" \
+            | grep -qx 16
+
+      - name: Stop the stack
+        if: always()
+        run: supabase stop --no-backup
+
+  frontend:
+    name: frontend gates
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      # Public values only. CI builds a throwaway bundle, so a placeholder project URL
+      # is enough for the client to render its "not configured" states rather than fail
+      # to build. No real project or key is referenced.
+      VITE_SUPABASE_URL: https://ci-placeholder.supabase.co
+      VITE_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install from the lockfile
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit and integration tests
+        run: npm test
+
+      - name: Deployment configuration gate
+        run: npm run test:deploy
+
+      - name: Release-origin gate
+        run: npm run test:release-gate
+
+      - name: Built-APK contents scan (skips when no APK is present)
+        run: npm run test:apk
+
+  repository:
+    name: repository gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+
+      - name: Course requirement matrix reconciliation
+        run: node scripts/check-course-matrix.mjs --self-test
+
+      - name: Repository security sweep
+        run: node scripts/security-sweep.mjs --self-test
+
+      - name: Auth email template and OTP configuration
+        run: node scripts/check-auth-config.mjs --self-test
+
+      - name: Edge Function typecheck, lint and behavioural tests
+        run: node scripts/check-edge-functions.mjs --mutation

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DEBUG-ONLY network security configuration for local manual phone testing.
+
+  Android 9 (API 28) and later block cleartext HTTP by default. A debug APK may be
+  pointed at a local `supabase start` stack over plain HTTP on the loopback interface
+  or the LAN, which is why this file exists at all. A Release build never talks to
+  anything but the hosted Supabase project over HTTPS, so it does not include this file.
+
+  Scope, deliberately narrow:
+    - This file lives in the `debug` source set only. `assembleRelease` uses the main
+      source set's copy instead, which denies cleartext outright, so no release APK can
+      carry a cleartext allowance.
+    - `base-config` keeps cleartext DENIED. Cleartext is opened per-domain, and only for
+      loopback (the Capacitor local web server) and the Android emulator's host alias.
+    - One further host may be generated below by `npm run build:android`, and only when
+      the configured Supabase URL is plain HTTP - i.e. only for a local `supabase start`
+      host. With an HTTPS Supabase URL the block stays empty, which is the committed
+      state: no LAN address is stored in the repository.
+
+  Production deployment uses HTTPS and never ships this file.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Capacitor serves the bundled web app from a loopback origin. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+
+    <!-- 10.0.2.2 is the Android emulator's alias for the host machine (emulator testing). -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+
+    <!-- BEGIN GENERATED-LAN-HOST -->
+    <!-- The configured Supabase URL uses HTTPS, so no cleartext host is permitted. -->
+    <!-- END GENERATED-LAN-HOST -->
+</network-security-config>

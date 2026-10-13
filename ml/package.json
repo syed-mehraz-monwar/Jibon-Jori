@@ -1,0 +1,14 @@
+{
+  "name": "jibonjori-ml",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Offline training toolchain for the JibonJori on-device compatibility model (A-12). Not shipped to any runtime image.",
+  "scripts": {
+    "train": "node train.mjs",
+    "publish": "node publish.mjs"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs": "4.22.0"
+  }
+}

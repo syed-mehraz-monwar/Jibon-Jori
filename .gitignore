@@ -5,17 +5,43 @@ node_modules/
 .env
 .env.*
 !.env.example
+# Locally-saved Supabase project credentials (reference id, project URL, anon key,
+# service-role key, database password). Never committed: the service-role key and database
+# password would hand over the whole database. The file is kept locally and read by tooling.
+supabase.txt
+*supabase*credentials*.txt
+secrets.txt
+credentials.txt
+# The phone-test contract is a documented template and must stay trackable even though
+# `.env.*` is ignored. The machine-specific `.env.phone` / `.env.phone.local` (which carry
+# a LAN IP) stay ignored - only the placeholder example is committed.
+!.env.phone.example
 
 # Build output
 dist/
 build/
 .next/
+# Gradle working/daemon cache. Regenerated on every build and machine-specific
+# (holds absolute paths); the build scripts that matter are `*.gradle` source files,
+# which stay tracked. `frontend/android/.gradle` is a real directory in a working tree.
+.gradle/
+# Android Studio/Gradle machine-local SDK configuration. `frontend/android/local.properties`
+# carries this machine's absolute `sdk.dir`; a fresh clone regenerates it. Ignored at every
+# depth so a stray copy at the repository root is covered too.
+local.properties
+# Packaged application binaries. The debug APK produced for phone testing is a build artifact,
+# never source. There is no release keystore yet; `*.aab` is ignored defensively so a future
+# signed bundle cannot be committed.
+*.apk
+*.aab
 
 # Logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+# Log directories (the `*.log` rule only matches files; a directory of logs would slip past).
+logs/
 
 # IDE
 .vscode/
@@ -25,9 +51,39 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
+# Release signing material (Android). The keystore and its passwords sign the
+# distributed app; committing either would let anyone publish updates as JibonJori.
+# `frontend/android/keystore.properties.example` is the committed template.
+*.jks
+*.keystore
+keystore.properties
+!*.example
+
 # Testing / coverage
+# The frontend suite runs on Vitest, which writes no coverage directory by default.
+# The conventional output path is still ignored so a future coverage tool cannot
+# commit report output. If a different output directory is ever configured, add it here.
 coverage/
+# Node/TypeScript incremental build metadata (not produced today; ignored defensively).
+*.tsbuildinfo
 
 # Temporary files
 *.tmp
 *.temp
+
+# ML training dataset (A-12).
+# `ml/dataset.json` is deterministically regenerated from the platform's own scorer, so it
+# is build output rather than source. The frozen model artifact it produces
+# (`ml/artifacts/compatibility-mlp-v1.json`) IS committed, so the application never needs
+# this file at runtime.
+ml/dataset.json
+
+# Verification harness scratch files.
+# The harness scripts live in the OS temp directory, but an accidental relative write can
+# drop an empty copy at the repository root (this happened once). These names are ignored so
+# a scratch artifact can never be committed; the real scripts are not part of the repository
+# by design, and any harness step that matters is recorded in the reports instead.
+compose-verify.env
+wsl-*.sh
+run-*.ps1
+derive-matrix.mjs
