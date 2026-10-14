@@ -115,6 +115,21 @@ export const authApi = {
     if (!data.user) {
       throw new ApiError(500, "REGISTRATION_FAILED", "The account could not be created.");
     }
+    // Supabase hides "email already registered" to prevent account enumeration:
+    // re-signing-up a confirmed address returns 200 with a user, no session and
+    // an EMPTY identities array — and sends no email. Without this check the app
+    // would claim "a code was sent" while nothing is on its way (the exact
+    // never-arriving-OTP symptom). A genuinely new signup carries one identity.
+    // The field is read defensively: if a future shape omits it, fall through to
+    // the previous behaviour rather than blocking registration.
+    const identities = (data.user as { identities?: unknown }).identities;
+    if (Array.isArray(identities) && identities.length === 0) {
+      throw new ApiError(
+        409,
+        "USER_ALREADY_REGISTERED",
+        "This email is already registered. Sign in instead — no new code was sent."
+      );
+    }
     // The confirmation step runs before a session exists, so the email is recorded
     // here for `verifyOtp`/`requestOtp` to read back.
     setPendingEmail(email);
