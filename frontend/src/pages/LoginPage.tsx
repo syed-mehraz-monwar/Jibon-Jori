@@ -32,7 +32,7 @@ export function LoginPage() {
     setError(null);
 
     if (identifier.trim().length < 3) {
-      setError("Enter your username, email or phone number.");
+      setError("Enter your email address.");
       return;
     }
     if (!password) {
@@ -62,14 +62,20 @@ export function LoginPage() {
 
       <Card title="Sign in">
         <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
-          <Field label="Username, email or phone" htmlFor="identifier" required>
+          <Field
+            label="Email address"
+            htmlFor="identifier"
+            required
+            hint="Sign in with the email address you registered with."
+          >
             <Input
               id="identifier"
               name="identifier"
-              autoComplete="username"
+              autoComplete="email"
+              inputMode="email"
               value={identifier}
               onChange={(event) => setIdentifier(event.target.value)}
-              placeholder="arif_hossain"
+              placeholder="arif@example.com"
             />
           </Field>
 
