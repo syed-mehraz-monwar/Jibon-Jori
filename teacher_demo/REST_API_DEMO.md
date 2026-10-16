@@ -8,7 +8,6 @@
   (the public anon key — safe for a client; Row Level Security still applies).
 - **Verified live 2026-10-14:** `200 OK`, **8 rows** (`Below Secondary` first);
   without the key: **401 Unauthorized**.
-
 ## Run it live (key is read from the local config file — never pasted)
 
 ```powershell
