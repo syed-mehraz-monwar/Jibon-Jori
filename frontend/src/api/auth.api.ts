@@ -82,6 +82,121 @@ function maskEmail(email: string): string {
   return `${head}${"*".repeat(Math.max(1, local.length - 2))}@${domain}`;
 }
 
+/**
+ * Maps a Supabase `signInWithPassword` failure onto an actionable `ApiError`.
+ *
+ * Previously every failure surfaced as "Invalid credentials", which hid
+ * unverified addresses, outages and rate limits behind a message that blamed
+ * the password. Each branch below is matched on the error's code/message only;
+ * nothing sensitive is ever logged or returned.
+ */
+export function mapSignInError(error: unknown): ApiError {
+  if (error instanceof ApiError) return error;
+  const record = (error ?? {}) as { code?: unknown; message?: unknown; status?: unknown; name?: unknown };
+  const message = typeof record.message === "string" ? record.message : "";
+  const code = typeof record.code === "string" ? record.code : "";
+  const combined = `${code} ${message}`.toUpperCase();
+
+  if (
+    record.name === "TypeError" ||
+    combined.includes("FAILED TO FETCH") ||
+    combined.includes("NETWORKERROR") ||
+    combined.includes("NETWORK REQUEST FAILED") ||
+    combined.includes("LOAD FAILED")
+  ) {
+    return new ApiError(
+      503,
+      "NETWORK_UNAVAILABLE",
+      "We could not reach the sign-in service. Check your connection and try again."
+    );
+  }
+  if (combined.includes("EMAIL NOT CONFIRMED") || combined.includes("EMAIL_NOT_CONFIRMED")) {
+    return new ApiError(
+      400,
+      "EMAIL_NOT_CONFIRMED",
+      "Your email address is not verified yet. Enter the 6-digit code we sent you, then sign in."
+    );
+  }
+  if (
+    combined.includes("TOO MANY REQUESTS") ||
+    combined.includes("RATE LIMIT") ||
+    combined.includes("OVER_REQUEST") ||
+    combined.includes("OVER_EMAIL")
+  ) {
+    return new ApiError(
+      429,
+      "RATE_LIMITED",
+      "Too many sign-in attempts. Wait a few minutes and try again."
+    );
+  }
+  if (combined.includes("INVALID LOGIN CREDENTIALS") || combined.includes("INVALID_CREDENTIALS")) {
+    // Supabase deliberately does not say whether the address or the password
+    // was wrong, so neither do we.
+    return new ApiError(
+      401,
+      "INVALID_CREDENTIALS",
+      "That email and password do not match. Check them and try again."
+    );
+  }
+  return toApiError(error, "Sign in failed. Please try again.");
+}
+
+/**
+ * Resolves a bare username to its sign-in email address.
+ *
+ * `profiles` is not readable before sign-in (RLS grants it only to
+ * `authenticated`), so the lookup goes through the `resolve-login-email` Edge
+ * Function, which holds the service role server-side and rate-limits callers.
+ * Until that function is deployed, username sign-in is unavailable and the
+ * caller is told to use their email address instead of being shown a
+ * misleading "Invalid credentials" error. The service-role key never enters
+ * the client: the worst a caller learns is the email they already own.
+ */
+async function resolveEmailForUsername(username: string): Promise<string> {
+  const normalized = username.trim().toLowerCase();
+  if (!/^[a-z0-9_]{3,32}$/.test(normalized)) {
+    throw new ApiError(
+      400,
+      "VALIDATION_ERROR",
+      "Enter the email address you registered with."
+    );
+  }
+  try {
+    const { email } = await invokeFunction<{ email: string }>("resolve-login-email", {
+      username: normalized,
+    });
+    if (typeof email !== "string" || !email.includes("@")) {
+      throw new ApiError(500, "REQUEST_FAILED", "Sign in failed. Please try again.");
+    }
+    return email.trim().toLowerCase();
+  } catch (caught) {
+    if (caught instanceof ApiError) {
+      // The function is not deployed yet (404/NOT_FOUND from the gateway) or
+      // unreachable: report username sign-in as unavailable, not as a wrong
+      // password. A genuine "unknown username" from the deployed function also
+      // stays generic here to avoid enumerating accounts.
+      if (caught.code === "USERNAME_NOT_FOUND") {
+        throw new ApiError(
+          401,
+          "INVALID_CREDENTIALS",
+          "That email and password do not match. Check them and try again."
+        );
+      }
+      if (caught.code === "RATE_LIMITED") throw caught;
+      throw new ApiError(
+        400,
+        "USERNAME_LOGIN_UNAVAILABLE",
+        "Username sign-in is not enabled yet — sign in with the email address you registered with."
+      );
+    }
+    throw new ApiError(
+      400,
+      "USERNAME_LOGIN_UNAVAILABLE",
+      "Username sign-in is not enabled yet — sign in with the email address you registered with."
+    );
+  }
+}
+
 type EdgeSession = {
   id: string;
   createdAt: string;
@@ -98,7 +213,7 @@ type EdgeSession = {
  */
 export const authApi = {
   register: async (input: RegisterInput): Promise<RegisterResult> => {
-    const email = input.email?.trim();
+    const email = input.email?.trim().toLowerCase();
     if (!email) {
       throw new ApiError(400, "VALIDATION_ERROR", "An email address is required to register.");
     }
@@ -185,19 +300,38 @@ export const authApi = {
   login: async (input: LoginInput): Promise<LoginResult> => {
     const identifier = input.identifier.trim();
     if (!identifier) throw new ApiError(400, "VALIDATION_ERROR", "Enter your email address.");
+    // Passwords are never trimmed or case-folded: what the user typed is what
+    // Supabase must verify. Only the identifier (email/username) is normalized.
+    const password = input.password;
+    if (!password) throw new ApiError(400, "VALIDATION_ERROR", "Enter your password.");
 
-    // The identifier may be an email or a username, but the profiles table is not
-    // readable before sign-in (RLS grants it only to authenticated), so a username
-    // cannot be resolved to its email client-side. It is therefore passed as the
-    // email: an email address works directly, and a username only works if it
-    // happens to be the address. This is a documented limitation of the
-    // pure-client architecture.
-    const { data, error } = await getSupabase().auth.signInWithPassword({
-      email: identifier,
-      password: input.password,
-    });
-    if (error || !data.user || !data.session) {
-      throw new ApiError(401, "INVALID_CREDENTIALS", "Invalid credentials.");
+    // Supabase Auth signs in with email + password only. When the identifier
+    // looks like an email address it is used directly (trimmed and lowercased,
+    // matching the normalization applied at registration). A bare username is
+    // resolved through the `resolve-login-email` Edge Function when it is
+    // deployed; before that, the caller gets an actionable message instead of
+    // a misleading "Invalid credentials".
+    const email = identifier.includes("@")
+      ? identifier.toLowerCase()
+      : await resolveEmailForUsername(identifier);
+
+    let data: { user: unknown; session: { access_token: string; refresh_token: string } | null };
+    try {
+      const result = await getSupabase().auth.signInWithPassword({ email, password });
+      if (result.error) throw mapSignInError(result.error);
+      data = result.data as typeof data;
+    } catch (caught) {
+      if (caught instanceof ApiError) throw caught;
+      throw mapSignInError(caught);
+    }
+    if (!data.user || !data.session) {
+      // A user without a session means the address is still awaiting
+      // verification (Supabase issues no session before confirmation).
+      throw new ApiError(
+        400,
+        "EMAIL_NOT_CONFIRMED",
+        "Your email address is not verified yet. Enter the 6-digit code we sent you, then sign in."
+      );
     }
     const user = await loadUser(data.user as SupaUser);
     return { accessToken: data.session.access_token, refreshToken: data.session.refresh_token, user };
