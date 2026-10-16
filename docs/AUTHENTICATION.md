@@ -125,18 +125,33 @@ always clears local state even if the call fails, and only rethrows a genuine
 
 ---
 
-## 2. Login by identifier — documented limitation
+## 2. Login by identifier
 
-`LoginInput` accepts an `identifier`, but `signInWithPassword` is only given an
-email (`auth.api.ts:170-189`). The comment at `auth.api.ts:174-179` states the
-reason: `profiles` is not readable before sign-in (RLS grants it only to
-`authenticated`), so a username cannot be resolved to its email client-side. The
-identifier is passed straight through as the email, so an email address works and a
-username only works if it happens to be the address. This is a documented limitation
-of the pure-client architecture, not a bug that was hidden.
+`LoginInput` accepts an `identifier`, and `signInWithPassword` is only ever
+given an email (`auth.api.ts`). The reason is architectural: `profiles` is not
+readable before sign-in (RLS grants it only to `authenticated`), so a username
+cannot be resolved to its email client-side.
 
-The login form's client-side validation message is "Enter your email address."
-(`auth.api.ts:172`), consistent with that limitation.
+Behaviour since the login-reliability fix:
+
+- An identifier containing `@` is treated as an email address (trimmed and
+  lowercased, matching registration normalization) and signed in directly.
+  Passwords are passed through byte-for-byte: never trimmed, never case-folded.
+- A bare username is resolved through the `resolve-login-email` Edge Function
+  (`supabase/functions/resolve-login-email`), which looks the address up with
+  the service role server-side and rate-limits callers. **That function is
+  prepared but NOT deployed** (it is a username -> email oracle and needs the
+  owner's approval), so until deployment a username sign-in fails with the
+  actionable `USERNAME_LOGIN_UNAVAILABLE` ("sign in with the email address you
+  registered with") instead of a misleading wrong-password error.
+- Every sign-in failure is mapped by `mapSignInError`: wrong email/password
+  (`INVALID_CREDENTIALS`), unverified address (`EMAIL_NOT_CONFIRMED`),
+  rate limiting (`RATE_LIMITED`) and unreachable service
+  (`NETWORK_UNAVAILABLE`) each get their own message. A signed-in user with no
+  session is reported as unverified, never as a wrong password.
+
+The login form is labelled email-only (`LoginPage.tsx`) while username sign-in
+awaits the Edge Function deployment.
 
 ---
 
