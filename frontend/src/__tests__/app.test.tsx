@@ -70,7 +70,7 @@ describe("public routes", () => {
 
     await actor.click(await screen.findByRole("button", { name: "Sign in" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/Enter your username/);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Enter your email address/);
     expect(signIn).not.toHaveBeenCalled();
   });
 
@@ -79,11 +79,11 @@ describe("public routes", () => {
     const actor = userEvent.setup();
     renderApp("/login");
 
-    await actor.type(await screen.findByLabelText(/Username, email or phone/), "rabby@example.com");
+    await actor.type(await screen.findByLabelText(/Email address/), "rabby@example.com");
     await actor.type(screen.getByLabelText(/Password/), "wrong-password");
     await actor.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Invalid credentials.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(/do not match/);
   });
 });
 
