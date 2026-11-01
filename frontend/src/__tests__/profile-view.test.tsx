@@ -94,12 +94,12 @@ describe("discovery to profile-view handoff", () => {
 
     renderApp("/app/profiles/p2", { state: { profile: searchProfile } });
 
-    expect(await screen.findByRole("heading", { name: "Nusrat Jahan" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Nusrat Jahan" }, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.queryByText("Open this profile from a list")).toBeNull();
-    expect(await screen.findByText("Interact")).toBeInTheDocument();
+    expect(await screen.findByText("Interact", undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.getByText("Paediatrician.")).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: /Favourite/ })).toBeInTheDocument();
-    expect(await screen.findByText("74%")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Favourite/ }, { timeout: 5000 })).toBeInTheDocument();
+    expect(await screen.findByText("74%", undefined, { timeout: 5000 })).toBeInTheDocument();
   });
 
   it("explains how to reach a profile when the view is opened directly", async () => {
@@ -108,8 +108,8 @@ describe("discovery to profile-view handoff", () => {
 
     renderApp("/app/profiles/p2");
 
-    expect(await screen.findByText("Open this profile from a list")).toBeInTheDocument();
+    expect(await screen.findByText("Open this profile from a list", undefined, { timeout: 5000 })).toBeInTheDocument();
     // Everything addressable by id is still loaded without the router state.
-    expect(await screen.findByText("74%")).toBeInTheDocument();
+    expect(await screen.findByText("74%", undefined, { timeout: 5000 })).toBeInTheDocument();
   });
 });

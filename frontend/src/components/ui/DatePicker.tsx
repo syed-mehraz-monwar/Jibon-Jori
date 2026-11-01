@@ -3,9 +3,7 @@ import { Input } from "./Input";
 
 export type DatePickerProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
   invalid?: boolean;
-  /** Require the chosen date to be at least this many years in the past (18 for DOB). */
-  minAgeYears?: number;
-  /** Optional upper bound as an ISO date string. */
+  /** Optional upper bound as an ISO date string; defaults to today. */
   maxDate?: string;
 };
 
@@ -24,21 +22,16 @@ export const todayIsoDate = (): string => new Date().toISOString().slice(0, 10);
  * A native control is used deliberately instead of a date-picker dependency: it is
  * accessible, locale-aware and keyboard-operable on every target platform, and
  * the backend re-validates the concrete date (including the 18-year rule) anyway.
- * Server-side rules are surfaced here as `min`/`max` so the browser rejects an
- * invalid DOB before it is ever submitted.
+ *
+ * Bounds are always supplied explicitly by the caller. An earlier version
+ * derived `min` from "today minus 18 years", which marked that date as the
+ * *earliest* selectable value and made every older birth date unselectable —
+ * the reason members could not enter their date of birth. For a date of birth the
+ * floor is a fixed past date and the 18-year rule is the `max`.
  */
 export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(function DatePicker(
-  { invalid, minAgeYears, maxDate, min, max, ...rest },
+  { invalid, maxDate, max, ...rest },
   ref
 ) {
-  return (
-    <Input
-      ref={ref}
-      type="date"
-      invalid={invalid}
-      min={min ?? (minAgeYears !== undefined ? dateYearsAgo(minAgeYears) : undefined)}
-      max={max ?? maxDate ?? todayIsoDate()}
-      {...rest}
-    />
-  );
+  return <Input ref={ref} type="date" invalid={invalid} max={max ?? maxDate ?? todayIsoDate()} {...rest} />;
 });

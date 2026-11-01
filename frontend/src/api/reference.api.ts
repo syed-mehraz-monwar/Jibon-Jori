@@ -14,12 +14,22 @@ async function referenceTable(
   table: "education_levels" | "professions" | "interests",
   orderBy: string
 ): Promise<Reference[]> {
-  const { data, error } = await getSupabase()
-    .from(table)
-    .select("id, slug, label, tier")
-    .order(orderBy, { ascending: true });
+  // The column list must match the table: `interests` has no `tier` column, and
+  // asking PostgREST for it fails the whole request with HTTP 400. Because every
+  // option set is loaded in one `Promise.all`, that single bad select used to
+  // reject the entire reference load and leave *every* dropdown empty.
+  // Each branch is written out so the query types stay literal.
+  const client = getSupabase();
+  const query =
+    table === "interests"
+      ? client.from("interests").select("id, slug, label")
+      : table === "education_levels"
+        ? client.from("education_levels").select("id, slug, label, tier")
+        : client.from("professions").select("id, slug, label, tier");
+
+  const { data, error } = await query.order(orderBy, { ascending: true });
   if (error) throw toApiError(error);
-  return ((data ?? []) as ReferenceRow[]).map(mapReference);
+  return ((data ?? []) as unknown as ReferenceRow[]).map(mapReference);
 }
 
 function fromEdges(collection: { edges: { node: ReferenceRow }[] } | null | undefined): Reference[] {

@@ -46,7 +46,7 @@ export function CommentThread({ profileId, canComment }: { profileId: string; ca
   useProfileRoom(profileId);
 
   const comments = useAsync(
-    (signal) => commentsApi.list(profileId, { page, limit: 10 }, signal),
+    (signal) => commentsApi.list(profileId, { page, limit: 5 }, signal),
     [profileId, page]
   );
 

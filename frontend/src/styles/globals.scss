@@ -98,6 +98,118 @@ $transition-base: 200ms cubic-bezier(0.22, 1, 0.36, 1);
   color: $brand-dark;
 }
 
+// Touch target for icon-only controls: Android's minimum is 48dp, but 44px is
+// the accepted web floor and keeps the header compact on a 360px-wide screen.
+.jj-tap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+
+// Rendered Markdown on a profile. Scoped so the allow-listed tags stay readable
+// without pulling a typography plugin into the bundle.
+.jj-markdown {
+  overflow-wrap: anywhere;
+
+  > :first-child {
+    margin-top: 0;
+  }
+
+  > :last-child {
+    margin-bottom: 0;
+  }
+
+  p,
+  ul,
+  ol,
+  blockquote,
+  pre {
+    margin-block: 0.6rem;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    margin-block: 1rem 0.4rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: $ink;
+  }
+
+  h1 {
+    font-size: 1.25rem;
+  }
+
+  h2 {
+    font-size: 1.125rem;
+  }
+
+  h3,
+  h4 {
+    font-size: 1rem;
+  }
+
+  ul,
+  ol {
+    padding-inline-start: 1.25rem;
+  }
+
+  ul {
+    list-style: disc;
+  }
+
+  ol {
+    list-style: decimal;
+  }
+
+  blockquote {
+    border-inline-start: 3px solid rgba($brand, 0.35);
+    padding-inline-start: 0.75rem;
+    color: color.adjust($ink, $lightness: 30%);
+  }
+
+  code {
+    border-radius: 0.35rem;
+    background: rgba($ink, 0.06);
+    padding: 0.1rem 0.3rem;
+    font-size: 0.85em;
+  }
+
+  pre {
+    overflow-x: auto;
+    border-radius: 0.6rem;
+    background: rgba($ink, 0.06);
+    padding: 0.75rem;
+  }
+
+  pre code {
+    background: transparent;
+    padding: 0;
+  }
+
+  a {
+    color: $brand-dark;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  hr {
+    margin-block: 1rem;
+    border-color: rgba($ink, 0.12);
+  }
+}
+
+// Android WebView can nudge the layout sideways when a long word or a fixed
+// element is wider than the viewport; clip rather than scroll the page.
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 // Neutralise motion for users who asked for it, at the stylesheet level, in
 // addition to the JS-level check in `lib/animations.ts`.
 @media (prefers-reduced-motion: reduce) {

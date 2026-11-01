@@ -8,6 +8,11 @@ import { SocketProvider } from "./context/SocketContext";
 import { ToastProvider } from "./context/ToastContext";
 import "./styles/tailwind.css";
 import "./styles/globals.scss";
+import { routeRecoveryFragment } from "./lib/recovery";
+
+// A password-recovery email can land on the Site URL root; move it to the
+// reset route before the router reads the initial location.
+routeRecoveryFragment();
 
 const container = document.getElementById("root");
 if (!container) throw new Error("Root element #root was not found in index.html");

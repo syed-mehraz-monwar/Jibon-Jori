@@ -10,6 +10,7 @@ import {
   mediaBytesError,
 } from "../../lib/validation";
 import { fileNameFromPath, formatBytes, formatDate } from "../../lib/format";
+import { MediaThumbnail } from "../media/MediaThumbnail";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { Checkbox } from "../ui/Checkbox";
@@ -23,7 +24,7 @@ import { Spinner } from "../ui/Spinner";
 
 type Kind = "photo" | "document";
 
-const MEDIA_PAGE_SIZE = 12;
+const MEDIA_PAGE_SIZE = 5;
 
 /**
  * Profile media manager.
@@ -37,7 +38,7 @@ const MEDIA_PAGE_SIZE = 12;
  * form is revealed as a fallback for deployments that store files outside the
  * application - it is never used to imply that a file was uploaded when it was not.
  */
-export function MediaManager() {
+export function MediaManager({ onChanged }: { onChanged?: () => void } = {}) {
   const toast = useToast();
   const [page, setPage] = useState(1);
   const media = useAsync(() => mediaApi.listMine({ page, limit: MEDIA_PAGE_SIZE }), [page]);
@@ -97,6 +98,7 @@ export function MediaManager() {
       setIsPrimary(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
       media.reload();
+      onChanged?.();
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === "STORAGE_NOT_CONFIGURED") {
         // Expected until storage credentials are configured: say so, and offer the
@@ -146,6 +148,7 @@ export function MediaManager() {
       setBytes(null);
       setIsPrimary(false);
       media.reload();
+      onChanged?.();
     } catch (caught) {
       setFileError(caught instanceof ApiError ? caught.message : "Could not register the media.");
     } finally {
@@ -159,6 +162,7 @@ export function MediaManager() {
       await mediaApi.setPrimary(id);
       toast.success("Primary photo updated.");
       media.reload();
+      onChanged?.();
     } catch (caught) {
       toast.error("Could not set the primary photo", caught instanceof ApiError ? caught.message : undefined);
     } finally {
@@ -172,6 +176,7 @@ export function MediaManager() {
       await mediaApi.remove(id);
       toast.success("Media removed.");
       media.reload();
+      onChanged?.();
     } catch (caught) {
       toast.error("Could not remove the media", caught instanceof ApiError ? caught.message : undefined);
     } finally {
@@ -196,6 +201,11 @@ export function MediaManager() {
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {media.data?.media.map((item) => (
             <li key={item.id} className="rounded-xl border border-slate-200 p-3">
+              <MediaThumbnail
+                item={item}
+                className="mb-2 h-24 w-full"
+                alt={item.isPrimary ? "Primary profile photo" : "Profile photo"}
+              />
               <div className="flex items-start justify-between gap-2">
                 <span className="truncate text-sm font-medium text-slate-800" title={item.firebasePath}>
                   {fileNameFromPath(item.firebasePath)}

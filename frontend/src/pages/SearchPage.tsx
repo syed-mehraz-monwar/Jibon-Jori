@@ -4,7 +4,8 @@ import type { SearchFilters } from "../api/search.api";
 import { useReferenceData } from "../context/ReferenceDataContext";
 import { useAsync } from "../hooks/useAsync";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
-import { GENDER_LABELS, MARITAL_STATUS_LABELS } from "../lib/format";
+import { GENDER_OPTIONS } from "../lib/profile-options";
+import { MARITAL_STATUS_LABELS } from "../lib/format";
 import type { Gender, MaritalStatus } from "../lib/types";
 import { PageHeader } from "../components/layout/PageHeader";
 import { ProfileCard } from "../components/discovery/ProfileCard";
@@ -18,9 +19,8 @@ import { Pagination } from "../components/ui/Pagination";
 import { Select } from "../components/ui/Select";
 import { Spinner } from "../components/ui/Spinner";
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 5;
 
-const GENDER_OPTIONS = Object.entries(GENDER_LABELS).map(([value, label]) => ({ value, label }));
 const MARITAL_OPTIONS = Object.entries(MARITAL_STATUS_LABELS).map(([value, label]) => ({ value, label }));
 
 /** B-40: the same ceiling the API enforces. */

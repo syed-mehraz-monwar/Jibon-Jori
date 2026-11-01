@@ -3,9 +3,12 @@ import {
   formatCoordinate,
   hasGoogleMapsKey,
   loadGoogleMaps,
+  reverseGeocode,
   type GoogleMapInstance,
   type GoogleMarkerInstance,
+  type ReverseGeocodeAddress,
 } from "../../lib/google-maps";
+import { getCurrentLocation } from "../../lib/geolocation";
 import { Button } from "../ui/Button";
 import { Checkbox } from "../ui/Checkbox";
 
@@ -19,7 +22,9 @@ type MapsNamespace = Awaited<ReturnType<typeof loadGoogleMaps>>;
  * Two ways to set a point: click the map, or ask the browser for the current
  * position. Geolocation is only requested when the user presses the button (never
  * automatically) and only when location consent is ticked, so the consent flag the
- * API stores is always backed by an explicit user action here.
+ * API stores is always backed by an explicit user action here. When a Google Maps
+ * key is configured the obtained coordinates are reverse-geocoded into a place
+ * summary the user can confirm before anything is saved.
  */
 export function LocationPicker({
   value,
@@ -28,6 +33,7 @@ export function LocationPicker({
   onConsentChange,
   showExact,
   onShowExactChange,
+  onResolvedAddress,
 }: {
   value: LocationValue;
   onChange: (next: LocationValue) => void;
@@ -35,6 +41,7 @@ export function LocationPicker({
   onConsentChange: (next: boolean) => void;
   showExact: boolean;
   onShowExactChange: (next: boolean) => void;
+  onResolvedAddress?: (address: ReverseGeocodeAddress) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<GoogleMapInstance | null>(null);
@@ -45,6 +52,7 @@ export function LocationPicker({
   const [mapStatus, setMapStatus] = useState<"idle" | "loading" | "ready" | "error">(
     hasGoogleMapsKey ? "loading" : "idle"
   );
+  const [resolvedAddress, setResolvedAddress] = useState<ReverseGeocodeAddress | null>(null);
 
   useEffect(() => {
     if (!hasGoogleMapsKey) return;
@@ -106,28 +114,32 @@ export function LocationPicker({
     mapRef.current?.setCenter(position);
   }, [value.lat, value.lng]);
 
-  function useCurrentLocation() {
+  async function useCurrentLocation() {
     setGeoError(null);
-    if (!("geolocation" in navigator)) {
-      setGeoError("This browser does not support geolocation.");
-      return;
-    }
     setGeoBusy(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setGeoBusy(false);
-        onConsentChange(true);
-        onChange({
-          lat: Number(position.coords.latitude.toFixed(6)),
-          lng: Number(position.coords.longitude.toFixed(6)),
-        });
-      },
-      () => {
-        setGeoBusy(false);
-        setGeoError("Could not read your location. You can still pick a point on the map.");
-      },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 }
-    );
+    try {
+      const position = await getCurrentLocation();
+      onConsentChange(true);
+      onChange({
+        lat: Number(position.lat.toFixed(6)),
+        lng: Number(position.lng.toFixed(6)),
+      });
+      if (hasGoogleMapsKey) {
+        try {
+          const address = await reverseGeocode(position.lat, position.lng);
+          setResolvedAddress(address);
+          onResolvedAddress?.(address);
+        } catch {
+          // Reverse geocoding is best effort: the coordinates are already stored
+          // locally and the user can still correct or type a place manually.
+          setResolvedAddress(null);
+        }
+      }
+    } catch (caught) {
+      setGeoError(caught instanceof Error ? caught.message : "Could not read your location. You can still pick a point on the map.");
+    } finally {
+      setGeoBusy(false);
+    }
   }
 
   return (
@@ -187,6 +199,15 @@ export function LocationPicker({
       <p className="text-xs text-slate-500">
         Selected: {formatCoordinate(value.lat)}, {formatCoordinate(value.lng)}
       </p>
+
+      {resolvedAddress ? (
+        <p className="text-sm text-slate-600">
+          Resolved location:{" "}
+          {[resolvedAddress.city ?? resolvedAddress.locality, resolvedAddress.district, resolvedAddress.country]
+            .filter((part) => Boolean(part))
+            .join(", ")}
+        </p>
+      ) : null}
 
       {geoError ? <p className="text-sm text-amber-700">{geoError}</p> : null}
 

@@ -1,6 +1,6 @@
 # Database
 
-The database is PostgreSQL (Supabase). The application schema is created by 14
+The database is PostgreSQL (Supabase). The application schema is created by 16
 forward-only migrations in `supabase/migrations/`. This document is a reference for
 what those migrations actually declare. Nothing here is invented: every statement
 cites the migration that defines it.
@@ -30,6 +30,8 @@ Migration order:
 | 0012 | `compatibility_parity.sql` | faithful deterministic scorer |
 | 0013 | `reports_parity.sql` | six report datasets, corrected `rating_summary` |
 | 0014 | `graphql.sql` | enables `pg_graphql` |
+| 0015 | `anon_least_privilege.sql` | revokes broad grants and re-applies least-privilege selects on reference tables |
+| 0016 | `profile_extras.sql` | `profile_details` 1:1 extras table + `social_links_valid()` guard + member-read masking RPC |
 
 ---
 
@@ -206,6 +208,18 @@ description ≤2000, `category` 1..40, `is_published` default true,
 `ml_artifacts_version_shape`, `ml_artifacts_has_layers` (non-empty `layers` array),
 `ml_artifacts_has_input_order`. A partial unique index
 `ml_artifacts_one_active_per_name_idx` allows exactly one active row per model name.
+
+### 2.15 `profile_details` — optional profile extras (migration 0016)
+
+`20261028000016_profile_extras.sql`. One additive table 1:1 with `profiles`
+(`profile_id uuid pk → profiles(id) on delete cascade`) because the optional groups
+have different visibility rules and RLS is row level, not column level. Columns:
+`religious_practice`, `blood_group`, `biodata`, `social_links jsonb` and the
+visibility trio (`photo_visibility`, `biodata_visibility`, `social_links_visibility`).
+`social_links_valid(p_links jsonb)` is a guard requiring allowed platform keys and
+absolute `https://` URLs ≤300 chars (rejecting `javascript:`/`data:`/`http:`), enforced
+by a CHECK. Members read another profile's row only through the `public_profile_details`
+SECURITY DEFINER masking RPC; no client selects another member's row directly.
 
 ---
 

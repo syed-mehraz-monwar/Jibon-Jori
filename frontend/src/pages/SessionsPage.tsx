@@ -5,6 +5,7 @@ import { useToast } from "../context/ToastContext";
 import { useAsync } from "../hooks/useAsync";
 import { formatDateTime } from "../lib/format";
 import { ApiError } from "../lib/http";
+import { BackButton } from "../components/layout/BackButton";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -59,9 +60,12 @@ export function SessionsPage() {
         title="Active sessions"
         description="Signed-in devices for your account. Revoking a session signs that device out."
         actions={
-          <Button variant="secondary" size="sm" loading={revokingOthers} onClick={() => void revokeOthers()}>
-            Revoke all other sessions
-          </Button>
+          <div className="flex items-center gap-2">
+            <BackButton />
+            <Button variant="secondary" size="sm" loading={revokingOthers} onClick={() => void revokeOthers()}>
+              Revoke all other sessions
+            </Button>
+          </div>
         }
       />
 

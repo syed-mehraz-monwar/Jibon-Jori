@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { profileApi } from "../api/profile.api";
 import { useAsync } from "../hooks/useAsync";
 import { ApiError } from "../lib/http";
 import { PageHeader } from "../components/layout/PageHeader";
 import { MediaManager } from "../components/profile/MediaManager";
 import { ProfileForm } from "../components/profile/ProfileForm";
+import { ProfilePhotoCard } from "../components/profile/ProfilePhotoCard";
 import { LocationMap } from "../components/map/LocationMap";
 import { Card } from "../components/ui/Card";
 import { ErrorState } from "../components/ui/ErrorState";
@@ -11,6 +13,7 @@ import { Spinner } from "../components/ui/Spinner";
 
 export function ProfilePage() {
   const profile = useAsync((signal) => profileApi.getMine(signal), []);
+  const [photoVersion, setPhotoVersion] = useState(0);
 
   const notFound = profile.status === "error" && profile.error instanceof ApiError && profile.error.status === 404;
 
@@ -41,6 +44,8 @@ export function ProfilePage() {
         </div>
 
         <div className="flex flex-col gap-5">
+          <ProfilePhotoCard key={photoVersion} profile={current} />
+
           <Card title="Shared location">
             <LocationMap
               lat={current?.lat ?? null}
@@ -56,7 +61,12 @@ export function ProfilePage() {
             </p>
           </Card>
 
-          <MediaManager />
+          <MediaManager
+            onChanged={() => {
+              profile.reload();
+              setPhotoVersion((value) => value + 1);
+            }}
+          />
         </div>
       </div>
     </>

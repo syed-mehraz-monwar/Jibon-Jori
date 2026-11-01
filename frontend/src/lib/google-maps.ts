@@ -20,10 +20,34 @@ export type GoogleMarkerInstance = {
   setPosition(position: LatLng): void;
 };
 
+/** One `geocode` hit: the point plus the address components Google returned. */
+export type GeocodedResult = {
+  lat: number;
+  lng: number;
+  address_components?: { long_name: string; short_name: string; types: string[] }[];
+};
+
+export type GoogleGeocoderInstance = {
+  geocode(request: { location: LatLng }): Promise<GeocodedResult[]>;
+};
+
+/**
+ * Reverse-geocoded place summary returned to the UI for confirmation.
+ * Every field is optional because Google omits components it could not resolve.
+ */
+export type ReverseGeocodeAddress = {
+  country?: string;
+  state?: string;
+  city?: string;
+  district?: string;
+  locality?: string;
+};
+
 type GoogleMapsNamespace = {
   maps: {
     Map: new (element: HTMLElement, options: Record<string, unknown>) => GoogleMapInstance;
     Marker: new (options: Record<string, unknown>) => GoogleMarkerInstance;
+    Geocoder: new (service?: unknown) => GoogleGeocoderInstance;
     SymbolPath?: Record<string, number>;
   };
 };
@@ -83,4 +107,32 @@ export { hasGoogleMapsKey };
 export function formatCoordinate(value: number | null, precision = 4): string {
   if (value === null || !Number.isFinite(value)) return "-";
   return value.toFixed(precision);
+}
+
+/**
+ * Reverse-geocodes coordinates into a human-readable place summary.
+ *
+ * Used by the "Use my current location" flow after coordinates are obtained, so
+ * the user can confirm the resolved city/district/country before anything is saved.
+ * Requires a configured Maps key (browser + Geocoding API enabled); without it this
+ * rejects with `GOOGLE_MAPS_KEY_MISSING` and the picker keeps manual entry.
+ */
+export async function reverseGeocode(lat: number, lng: number): Promise<ReverseGeocodeAddress> {
+  const google = await loadGoogleMaps();
+  const geocoder = new google.maps.Geocoder();
+  const results = await geocoder.geocode({ location: { lat, lng } });
+  const first = results?.[0];
+  const components = first?.address_components ?? [];
+  const names = (type: string): string[] =>
+    components.filter((component) => component.types?.includes(type)).map((c) => c.long_name);
+  const city = names("locality")?.[0] ?? names("sublocality")?.[0];
+  const district = names("sublocality")?.[0] ?? names("administrative_area_level_2")?.[0];
+  const address: ReverseGeocodeAddress = {
+    country: names("country")?.[0],
+    state: names("administrative_area_level_1")?.[0] ?? names("administrative_area")?.[0],
+    city,
+    district,
+    locality: city,
+  };
+  return address;
 }

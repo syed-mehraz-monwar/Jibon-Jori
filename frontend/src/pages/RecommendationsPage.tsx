@@ -13,7 +13,7 @@ import { ErrorState } from "../components/ui/ErrorState";
 import { Pagination } from "../components/ui/Pagination";
 import { Spinner } from "../components/ui/Spinner";
 
-const PAGE_SIZE = 9;
+const PAGE_SIZE = 5;
 
 /**
  * AI-assisted recommendations (Spec §1).

@@ -35,8 +35,20 @@ function offenders(pattern: RegExp): string[] {
 }
 
 describe("no HTML/script injection sinks", () => {
-  it("never sets raw HTML", () => {
-    expect(offenders(/dangerouslySetInnerHTML/)).toEqual([]);
+  it("only sets raw HTML in the sanitised Markdown renderer", () => {
+    // `components/ui/Markdown.tsx` is the single deliberate sink: it inserts the
+    // output of `lib/markdown.ts`, which DOMPurify sanitises against an
+    // allow-list. Every other file must never use the raw-HTML prop.
+    const normalized = offenders(/dangerouslySetInnerHTML/).map((file) =>
+      file.replace(/\\/g, "/")
+    );
+    expect(normalized.filter((file) => file !== "/components/ui/Markdown.tsx")).toEqual([]);
+  });
+
+  it("sanitises Markdown HTML with DOMPurify before inserting it", () => {
+    const markdown = readFileSync(join(srcDir, "lib/markdown.ts"), "utf8");
+    expect(markdown).toContain("DOMPurify");
+    expect(markdown).toMatch(/DOMPurify\.sanitize/);
   });
 
   it("never evaluates strings as code", () => {
@@ -71,6 +83,10 @@ describe("no credentials in the browser bundle", () => {
       "VITE_SUPABASE_ANON_KEY",
       "VITE_GOOGLE_MAPS_API_KEY",
       "VITE_YOUTUBE_VIDEO_IDS",
+      "VITE_DEVELOPER_NAME",
+      "VITE_DEVELOPER_ID",
+      "VITE_INSTITUTION",
+      "VITE_COURSE_NAME",
     ]);
     const used = new Set<string>();
     for (const file of files) {
@@ -82,7 +98,11 @@ describe("no credentials in the browser bundle", () => {
     expect([...used].filter((name) => !allowed.has(name))).toEqual([]);
     expect([...used].sort()).toEqual(
       [
+        "VITE_COURSE_NAME",
+        "VITE_DEVELOPER_ID",
+        "VITE_DEVELOPER_NAME",
         "VITE_GOOGLE_MAPS_API_KEY",
+        "VITE_INSTITUTION",
         "VITE_SUPABASE_ANON_KEY",
         "VITE_SUPABASE_URL",
         "VITE_YOUTUBE_VIDEO_IDS",

@@ -1,5 +1,6 @@
 import { getSupabase, callRpc, invokeFunction, toApiError } from "../lib/supabase";
 import { ApiError } from "../lib/http";
+import { isNativeApp } from "../lib/platform";
 import { deriveUserStatus } from "../lib/mappers";
 import type { LoginResult, OtpChallenge, RegisterResult, Role, SessionInfo, User } from "../lib/types";
 
@@ -347,6 +348,66 @@ export const authApi = {
     const { error } = await getSupabase().auth.signOut();
     if (error) throw toApiError(error);
     return null;
+  },
+
+  /**
+   * Sends a password-recovery email.
+   *
+   * The reply is intentionally identical whether or not the address exists:
+   * Supabase itself returns 200 for both, and the UI states the same sentence,
+   * so the form cannot be used to enumerate accounts.
+   *
+   * The link always completes on the web deployment. On native, no
+   * `redirectTo` is sent, so Supabase uses the project's configured Site URL
+   * (which is *not* modified here). The web app recognises the recovery
+   * fragment and shows the new-password form. A deep link back into the APK was
+   * deliberately not invented: it would require an app-link association that
+   * this build cannot provision.
+   */
+  requestPasswordReset: async (email: string): Promise<null> => {
+    const address = email.trim().toLowerCase();
+    if (!address.includes("@")) {
+      throw new ApiError(400, "VALIDATION_ERROR", "Enter the email address you registered with.");
+    }
+    const redirectTo = isNativeApp() ? undefined : `${window.location.origin}/reset-password`;
+    const { error } = await getSupabase().auth.resetPasswordForEmail(
+      address,
+      redirectTo ? { redirectTo } : undefined
+    );
+    if (error) {
+      const mapped = toApiError(error, "The reset email could not be sent. Try again in a moment.");
+      if (mapped.status === 429) {
+        throw new ApiError(429, "RATE_LIMITED", "Too many reset requests. Wait a few minutes and try again.");
+      }
+      throw mapped;
+    }
+    return null;
+  },
+
+  /** Sets a new password for the recovery session the email link created. */
+  updatePassword: async (password: string): Promise<null> => {
+    const { error } = await getSupabase().auth.updateUser({ password });
+    if (error) {
+      const mapped = toApiError(error, "The password could not be changed.");
+      if (mapped.code === "same_password") {
+        throw new ApiError(400, "SAME_PASSWORD", "Choose a password you have not used before.");
+      }
+      if (mapped.status === 401) {
+        throw new ApiError(
+          401,
+          "RECOVERY_EXPIRED",
+          "That reset link has expired. Request a new one from the sign-in screen."
+        );
+      }
+      throw mapped;
+    }
+    return null;
+  },
+
+  /** True when the page was opened from a valid recovery link. */
+  hasSession: async (): Promise<boolean> => {
+    const { data } = await getSupabase().auth.getSession();
+    return Boolean(data.session);
   },
 
   me: async (_signal?: AbortSignal): Promise<{ user: User }> => {

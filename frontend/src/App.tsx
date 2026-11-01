@@ -4,23 +4,26 @@ import { AppShell } from "./components/layout/AppShell";
 import { ErrorBoundary } from "./components/layout/ErrorBoundary";
 import { Toaster } from "./components/ui/Toaster";
 import { Spinner } from "./components/ui/Spinner";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { VerifyOtpPage } from "./pages/VerifyOtpPage";
 
 /**
- * B-48: the public pages (landing, sign-in, register, verify) are eager, because they are
- * the first paint for a new visitor. The authenticated application pages are loaded on
- * demand, so a visitor who never signs in downloads only the public shell, and a signed-in
- * member downloads one page's code at a time instead of the whole app up front.
+ * B-48: the public pages (landing, sign-in, register, verify, password reset) are eager,
+ * because they are the first paint for a new visitor and the auth flow must not wait on a
+ * second chunk. The authenticated application pages are loaded on demand, so a visitor who
+ * never signs in downloads only the public shell, and a signed-in member downloads one
+ * page's code at a time instead of the whole app up front.
  */
+const AboutPage = lazy(() => import("./pages/AboutPage").then((m) => ({ default: m.AboutPage })));
 const ChatPage = lazy(() => import("./pages/ChatPage").then((m) => ({ default: m.ChatPage })));
 const DashboardPage = lazy(() =>
   import("./pages/DashboardPage").then((m) => ({ default: m.DashboardPage }))
 );
-const LearnPage = lazy(() => import("./pages/LearnPage").then((m) => ({ default: m.LearnPage })));
 const NotificationsPage = lazy(() =>
   import("./pages/NotificationsPage").then((m) => ({ default: m.NotificationsPage }))
 );
@@ -66,6 +69,8 @@ export function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/verify" element={<VerifyOtpPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           <Route path="/app" element={<AppShell />}>
             <Route index element={<DashboardPage />} />
@@ -77,8 +82,8 @@ export function App() {
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="sessions" element={<SessionsPage />} />
             <Route path="chat" element={<ChatPage />} />
-            <Route path="learn" element={<LearnPage />} />
             <Route path="reports" element={<ReportsPage />} />
+            <Route path="about" element={<AboutPage />} />
           </Route>
 
           <Route path="/app/*" element={<Navigate to="/app" replace />} />

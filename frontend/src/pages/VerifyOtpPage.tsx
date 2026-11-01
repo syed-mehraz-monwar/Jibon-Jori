@@ -6,8 +6,8 @@ import { useToast } from "../context/ToastContext";
 import { ApiError } from "../lib/http";
 import { deliveryNotice } from "../lib/otp";
 import { otpCodeError } from "../lib/validation";
+import { AuthLayout } from "../components/layout/AuthLayout";
 import { Button } from "../components/ui/Button";
-import { Card } from "../components/ui/Card";
 import { Field } from "../components/ui/Field";
 import { Input } from "../components/ui/Input";
 
@@ -103,88 +103,88 @@ export function VerifyOtpPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-10">
-      <Link to="/" className="mb-6 text-center text-2xl font-bold">
-        <span className="jj-gradient-text">JibonJori</span>
-      </Link>
-
-      <Card title="Verify your account">
-        {delivered === false ? (
-          <div
-            role="alert"
-            className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-          >
-            <p className="font-semibold">No verification code could be sent.</p>
-            <p className="mt-1">
-              {deliveryReason === "DELIVERY_FAILED"
-                ? `The server tried to deliver a code to your ${
-                    channel === "phone" ? "phone" : "email address"
-                  } and the provider rejected it. Try resending in a moment.`
-                : "This server has no email or SMS provider configured, so no code was sent and verification cannot be completed. Ask the administrator to configure one, or use the support channel."}
-            </p>
-          </div>
-        ) : (
-          <p className="mb-4 text-sm text-slate-600">
-            {delivered === true && deliveredTo
-              ? `Enter the 6-digit code sent to ${deliveredTo}.`
-              : `Enter the 6-digit code sent to your ${
-                  channel === "phone" ? "phone" : "email address"
-                }.`}
-          </p>
-        )}
-
-        <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
-          <Field label="Verification code" htmlFor="code" required hint="Exactly 6 digits.">
-            <Input
-              id="code"
-              name="code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              value={code}
-              onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
-              placeholder="123456"
-              className="tracking-[0.5em]"
-            />
-          </Field>
-
-          {error ? (
-            <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </p>
-          ) : null}
-          {notice ? (
-            <p
-              role="status"
-              className={
-                delivered === false
-                  ? "rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900"
-                  : "rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
-              }
-            >
-              {notice}
-            </p>
-          ) : null}
-
-          <Button type="submit" loading={submitting} className="w-full" size="lg">
-            Verify and continue
-          </Button>
-        </form>
-
-        <div className="mt-4 flex items-center justify-between text-sm">
-          <button
-            type="button"
-            onClick={() => void onResend()}
-            disabled={resending || !userId}
-            className="font-medium text-brand-700 hover:underline disabled:opacity-50"
-          >
-            {resending ? "Sending..." : "Resend code"}
-          </button>
-          <Link to="/login" className="text-slate-500 hover:underline">
+    <AuthLayout
+      title="Verify your account"
+      subtitle={
+        delivered === false
+          ? undefined
+          : delivered === true && deliveredTo
+            ? `Enter the 6-digit code sent to ${deliveredTo}.`
+            : `Enter the 6-digit code sent to your ${
+                channel === "phone" ? "phone" : "email address"
+              }.`
+      }
+      footer={
+        <>
+          Wrong account?{" "}
+          <Link to="/login" className="font-medium text-brand-700 hover:underline">
             Back to sign in
           </Link>
+        </>
+      }
+    >
+      {delivered === false ? (
+        <div
+          role="alert"
+          className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+        >
+          <p className="font-semibold">No verification code could be sent.</p>
+          <p className="mt-1">
+            {deliveryReason === "DELIVERY_FAILED"
+              ? `The server tried to deliver a code to your ${
+                  channel === "phone" ? "phone" : "email address"
+                } and the provider rejected it. Try resending in a moment.`
+              : "This server has no email or SMS provider configured, so no code was sent and verification cannot be completed. Ask the administrator to configure one, or use the support channel."}
+          </p>
         </div>
-      </Card>
-    </div>
+      ) : null}
+
+      <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
+        <Field label="Verification code" htmlFor="code" required hint="Exactly 6 digits.">
+          <Input
+            id="code"
+            name="code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={code}
+            onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
+            placeholder="123456"
+            className="text-center text-lg tracking-[0.5em]"
+          />
+        </Field>
+
+        {error ? (
+          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        ) : null}
+        {notice ? (
+          <p
+            role="status"
+            className={
+              delivered === false
+                ? "rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900"
+                : "rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+            }
+          >
+            {notice}
+          </p>
+        ) : null}
+
+        <Button type="submit" loading={submitting} className="w-full" size="lg">
+          Verify and continue
+        </Button>
+      </form>
+
+      <button
+        type="button"
+        onClick={() => void onResend()}
+        disabled={resending || !userId}
+        className="mt-4 w-full rounded-lg py-2 text-sm font-medium text-brand-700 transition hover:underline disabled:opacity-50"
+      >
+        {resending ? "Sending…" : "Resend code"}
+      </button>
+    </AuthLayout>
   );
 }

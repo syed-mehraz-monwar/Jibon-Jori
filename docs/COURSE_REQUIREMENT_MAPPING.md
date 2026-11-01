@@ -17,15 +17,16 @@ Requirement Coverage".
 | Migrations apply to real PostgreSQL | `supabase/tests/run-rls-tests.sh` | 14 / 14 applied, `ON_ERROR_STOP` |
 | RLS / constraints / scoring / reports | same | **124 / 124** claims hold |
 | Frontend typecheck / lint / build | `npm run typecheck`, `npm run lint`, `npm run build` | exit 0 |
-| Frontend unit + integration | `npm test` | **142 passed** (18 files) |
+| Frontend unit + integration | `npm test` | **166 passed** (21 files) |
 | Deployment config | `npm run test:deploy` | 16 / 16 |
+| Release gate / APK scan | `npm run test:release-gate`, `npm run test:apk` | 21 / 21, CLEAN |
 
 ## Feature requirements (spec §1–§21)
 
 | # | Requirement | Implementation | Status | Evidence |
 | --- | --- | --- | --- | --- |
 | 1 | AI-powered matchmaking | `recommendations()` RPC; `matches.api.ts`; `RecommendationsPage` | **VERIFIED** (engine) / PARTIAL (live list) | SQL suite asserts eligibility filtering and no-cache-for-ineligible; unit test on the mapper |
-| 2 | AI chatbot | `ai-chat` Edge Function + `chat_conversations`/`chat_messages`; `ChatPage` | **NOT VERIFIED** | RLS suite covers the transcript policies; the function itself has never been executed (needs a project + LLM key) |
+| 2 | AI chatbot | `ai-chat` Edge Function + `chat_conversations`/`chat_messages`; `ChatPage` | **VERIFIED** (function chain) / **BLOCKED** (real LLM key) | Live probe: unauthenticated → HTTP 401; authenticated → HTTP 200 with user + assistant turns persisted and `fallback: true`; real model output BLOCKED while the LLM API key is absent in the Edge Function secrets |
 | 3 | User Registration and Authentication | Supabase Auth; `auth.api.ts`; `AuthContext`; pending gate in migration 0011 | **PARTIAL** | SQL suite asserts the pending gate in both directions; Auth itself needs a project |
 | 4 | Real-time username verification | `username_available(text)` RPC; `useUsernameAvailability` (debounced, RPC fallback) | **VERIFIED** | 124/124 includes anon reachability, reserved and taken handles, invalid shape; hook unit-tested |
 | 5 | Detailed matrimonial profiles | `profiles` (30 columns) + `ProfileForm`; bounds CHECKs in 0010 | **VERIFIED** | Constraint assertions (adult-only, lat/lng pairing, field lengths, lifestyle shape) |
@@ -72,7 +73,7 @@ Requirement Coverage".
 | Crystal Reports | Six report datasets + binding contract | PARTIAL |
 | Modern frontend framework | React 18 + TypeScript | VERIFIED |
 | Docker | Frontend image config | PARTIAL / BLOCKED (daemon) |
-| Generative AI/LLM integration | `ai-chat` / `ai-explanation` Edge Functions with a named fallback | NOT VERIFIED (never executed; needs an LLM key) |
+| Generative AI/LLM integration | `ai-chat` / `ai-explanation` Edge Functions with a named fallback | **VERIFIED** (fallback path executed) / **BLOCKED** (real LLM key absent) | Live chat probe executed the full chain and persisted both turns; the reply used the deterministic fallback (`model: null`), so real LLM output awaits the provider key |
 | Additional task-specific AI matchmaking features | `compute_compatibility`, `recommendations` | VERIFIED (engine) |
 
 ## What is deliberately not claimed

@@ -39,4 +39,10 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Runtime location access used by the Capacitor Geolocation plugin. The app
+         requests the coarse/fine location runtime permission only when the user
+         presses "Use my current location"; it is never required to open the app. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 </manifest>

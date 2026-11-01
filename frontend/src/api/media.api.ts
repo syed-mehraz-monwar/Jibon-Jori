@@ -198,6 +198,36 @@ export const mediaApi = {
     return { url: signed.data.signedUrl, provider: PROVIDER, expiresInSeconds: ttlSeconds, reason: null };
   },
 
+  /**
+   * The member's primary photo with a freshly signed preview URL.
+   *
+   * The buckets are private, so a stored path is not directly loadable. This
+   * returns `null` when no primary photo exists (a normal state, not an error);
+   * a storage failure is reported as `url: null` so the UI can show initials
+   * instead of a broken image.
+   */
+  primaryPhoto: async (): Promise<{ media: MediaItem; url: string | null } | null> => {
+    const userId = await requireUserId();
+    const { data, error } = await getSupabase()
+      .from("media")
+      .select(SELECT)
+      .eq("profile_id", userId)
+      .eq("kind", "photo")
+      .eq("is_primary", true)
+      .maybeSingle();
+    if (error) throw toApiError(error);
+    if (!data) return null;
+
+    const row = data as MediaRow;
+    const signed = await getSupabase()
+      .storage.from(bucketFor("photo"))
+      .createSignedUrl(row.storage_path, 3600);
+    return {
+      media: mapMedia(row),
+      url: signed.error ? null : (signed.data?.signedUrl ?? null),
+    };
+  },
+
   setPrimary: async (mediaId: string): Promise<{ media: MediaItem }> => {
     const userId = await requireUserId();
     const target = await getSupabase()

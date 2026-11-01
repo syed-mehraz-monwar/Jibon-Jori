@@ -198,7 +198,11 @@ Flags (`frontend/scripts/build-android.mjs:171-185`):
 The URL and key are resolved from CLI flags, then environment, then
 `.env.phone` / `.env.phone.local` / `.env` (`build-android.mjs:230-256`). Both values
 are public; the script rejects a `service_role` key outright for debug **and**
-release builds (`build-android.mjs:286-300`).
+release builds (`build-android.mjs:286-300`). The machine-local
+`.env.phone.local` is **merged** rather than overwritten: only the two Supabase
+values are refreshed on each build and every other key already present in the file
+is preserved, so developer attribution or a Maps key entered there survives a
+rebuild.
 
 The build runs typecheck and lint, `vite build --mode phone`, verifies the built
 bundle actually contains the Supabase host and the anon key signature, runs

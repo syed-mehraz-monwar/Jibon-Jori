@@ -19,6 +19,7 @@ import type {
   PhotoVisibility,
   PreferenceRule,
   Profile,
+  ProfileDetails,
   Reference,
   UserStatus,
 } from "./types";
@@ -146,14 +147,51 @@ export function mapProfileRow(row: ProfileRow): Profile {
     interests,
     isPublic: row.is_public === true,
     photoVisibility: row.photo_visibility ?? "public",
+    // Filled in by `profileApi.getMine`, which reads the optional row
+    // separately so a deployment without migration 0016 degrades to "no extras"
+    // instead of failing the whole profile read.
+    details: null,
     completeness: row.completeness ?? 0,
     createdAt: row.created_at ?? new Date(0).toISOString(),
     updatedAt: row.updated_at ?? row.created_at ?? new Date(0).toISOString(),
   };
 }
 
-export type PartnerPreferencesRow = {
-  profile_id: string;
+/**
+ * `profile_details` row -> DTO. Missing values are simply absent, so "not
+ * provided" and "prefer not to say" stay distinguishable.
+ */
+export function mapProfileDetails(row: ProfileDetailsRow): ProfileDetails {
+  return {
+    religiousPractice: (row.religious_practice ?? null) as ProfileDetails["religiousPractice"],
+    bloodGroup: (row.blood_group ?? null) as ProfileDetails["bloodGroup"],
+    biodata: row.biodata ?? null,
+    socialLinks: (row.social_links ?? {}) as ProfileDetails["socialLinks"],
+    religiousPracticeVisibility: row.religious_practice_visibility ?? "members",
+    bloodGroupVisibility: row.blood_group_visibility ?? "private",
+    biodataVisibility: row.biodata_visibility ?? "members",
+    socialLinksVisibility: row.social_links_visibility ?? "members",
+  };
+}
+
+/** The `profile_details` columns `profileApi` reads and writes (migration 0016). */
+export type ProfileDetailsRow = {
+  profile_id?: string;
+  religious_practice?: string | null;
+  blood_group?: string | null;
+  biodata?: string | null;
+  social_links?: Record<string, string> | null;
+  religious_practice_visibility?: PhotoVisibility | null;
+  blood_group_visibility?: PhotoVisibility | null;
+  biodata_visibility?: PhotoVisibility | null;
+  social_links_visibility?: PhotoVisibility | null;
+};
+
+export const PROFILE_DETAILS_SELECT =
+  "profile_id, religious_practice, blood_group, biodata, social_links, " +
+  "religious_practice_visibility, blood_group_visibility, biodata_visibility, social_links_visibility";
+
+export type PartnerPreferencesRow = {  profile_id: string;
   age_min: number | null;
   age_max: number | null;
   genders: string[] | null;

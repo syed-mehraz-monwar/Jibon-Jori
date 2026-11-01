@@ -7,10 +7,11 @@ import { ApiError } from "../lib/http";
 import { deliveryNotice } from "../lib/otp";
 import { emailError, passwordError, phoneError, usernameError } from "../lib/validation";
 import { cn } from "../lib/cn";
+import { AuthLayout } from "../components/layout/AuthLayout";
 import { Button } from "../components/ui/Button";
-import { Card } from "../components/ui/Card";
 import { Field } from "../components/ui/Field";
 import { Input } from "../components/ui/Input";
+import { PasswordInput } from "../components/ui/PasswordInput";
 import { Select } from "../components/ui/Select";
 
 type Channel = "email" | "phone";
@@ -95,132 +96,134 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-10">
-      <Link to="/" className="mb-6 text-center text-2xl font-bold">
-        <span className="jj-gradient-text">JibonJori</span>
-      </Link>
-
-      <Card title="Create your account">
-        <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
-          <Field
-            label="Username"
-            htmlFor="username"
-            required
-            hint="3-32 characters. Letters, numbers and underscores."
-            error={username ? usernameError(username) : null}
-          >
-            <Input
-              id="username"
-              name="username"
-              autoComplete="username"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              placeholder="arif_hossain"
-            />
-          </Field>
-
-          {/* Live availability while typing (Spec §4). Realtime over Supabase
-              Realtime, falling back to the `username_available` RPC when the
-              channel is not connected. */}
-          {username.trim().length >= 3 ? (
-            <p
-              className={cn("-mt-2 text-sm", AVAILABILITY_STYLES[availability.status] ?? "text-slate-500")}
-              aria-live="polite"
-            >
-              {availability.message}
-            </p>
-          ) : null}
-
-          <Field
-            label="Password"
-            htmlFor="password"
-            required
-            hint="At least 8 characters."
-            error={password ? passwordError(password) : null}
-          >
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </Field>
-
-          <Field
-            label="Verification channel"
-            htmlFor="channel"
-            required
-            hint="We send a one-time code to the channel you choose."
-          >
-            <Select
-              id="channel"
-              name="channel"
-              value={channel}
-              onChange={(event) => setChannel(event.target.value as Channel)}
-              options={[
-                { value: "email", label: "Email" },
-                { value: "phone", label: "Phone (SMS)" },
-              ]}
-            />
-          </Field>
-
-          {channel === "email" ? (
-            <Field
-              label="Email address"
-              htmlFor="email"
-              required
-              error={email ? emailError(email) : null}
-            >
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="arif@example.com"
-              />
-            </Field>
-          ) : (
-            <Field
-              label="Phone number"
-              htmlFor="phone"
-              required
-              error={phone ? phoneError(phone) : null}
-              hint="E.164 format, for example +8801712345678."
-            >
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                autoComplete="tel"
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                placeholder="+8801712345678"
-              />
-            </Field>
-          )}
-
-          {formError ? (
-            <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-              {formError}
-            </p>
-          ) : null}
-
-          <Button type="submit" loading={submitting} className="w-full" size="lg">
-            Create account
-          </Button>
-        </form>
-
-        <p className="mt-4 text-center text-sm text-slate-500">
+    <AuthLayout
+      title="Create your account"
+      subtitle="A few details first, then we verify your email with a six-digit code."
+      footer={
+        <>
           Already registered?{" "}
           <Link to="/login" className="font-medium text-brand-700 hover:underline">
             Sign in
           </Link>
-        </p>
-      </Card>
-    </div>
+        </>
+      }
+    >
+      <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
+        <Field
+          label="Username"
+          htmlFor="username"
+          required
+          hint="3-32 characters. Letters, numbers and underscores."
+          error={username ? usernameError(username) : null}
+        >
+          <Input
+            id="username"
+            name="username"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            placeholder="arif_hossain"
+          />
+        </Field>
+
+        {/* Live availability while typing (Spec §4). Realtime over Supabase
+            Realtime, falling back to the `username_available` RPC when the
+            channel is not connected. */}
+        {username.trim().length >= 3 ? (
+          <p
+            className={cn("-mt-2 text-sm", AVAILABILITY_STYLES[availability.status] ?? "text-slate-500")}
+            aria-live="polite"
+          >
+            {availability.message}
+          </p>
+        ) : null}
+
+        <Field
+          label="Password"
+          htmlFor="password"
+          required
+          hint="At least 8 characters."
+          error={password ? passwordError(password) : null}
+        >
+          <PasswordInput
+            id="password"
+            name="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        </Field>
+
+        <Field
+          label="Verification channel"
+          htmlFor="channel"
+          required
+          hint="We send a one-time code to the channel you choose."
+        >
+          <Select
+            id="channel"
+            name="channel"
+            value={channel}
+            onChange={(event) => setChannel(event.target.value as Channel)}
+            options={[
+              { value: "email", label: "Email" },
+              { value: "phone", label: "Phone (SMS)" },
+            ]}
+          />
+        </Field>
+
+        {channel === "email" ? (
+          <Field
+            label="Email address"
+            htmlFor="email"
+            required
+            error={email ? emailError(email) : null}
+          >
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              autoCapitalize="none"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="arif@example.com"
+            />
+          </Field>
+        ) : (
+          <Field
+            label="Phone number"
+            htmlFor="phone"
+            required
+            error={phone ? phoneError(phone) : null}
+            hint="E.164 format, for example +8801712345678."
+          >
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              autoComplete="tel"
+              inputMode="tel"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              placeholder="+8801712345678"
+            />
+          </Field>
+        )}
+
+        {formError ? (
+          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {formError}
+          </p>
+        ) : null}
+
+        <Button type="submit" loading={submitting} className="w-full" size="lg">
+          Create account
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }

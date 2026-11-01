@@ -60,7 +60,7 @@ describe("public routes", () => {
   it("redirects a protected route to sign-in instead of rendering it", async () => {
     renderApp("/app/search");
 
-    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
   });
 
   it("validates the sign-in form before calling the API", async () => {
@@ -104,7 +104,7 @@ describe("authenticated application shell", () => {
     seedAuthenticatedShell();
     renderApp("/app");
 
-    expect(screen.getByText("Restoring your session")).toBeInTheDocument();
+    expect(screen.getByText(/Restoring your session/)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Sign in" })).toBeNull();
   });
 
@@ -112,7 +112,7 @@ describe("authenticated application shell", () => {
     // No seedAuth: `getSession` reports nothing, so the shell stays anonymous.
     renderApp("/app");
 
-    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
   });
 
   it("signs out and returns to the sign-in page", async () => {
@@ -120,9 +120,13 @@ describe("authenticated application shell", () => {
     const actor = userEvent.setup();
     renderApp("/app");
 
+    // Sign out lives in the drawer, alongside the secondary destinations.
+    await actor.click(await screen.findByRole("button", { name: "Open menu" }));
     await actor.click(await screen.findByRole("button", { name: "Sign out" }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Welcome back" })).toBeInTheDocument()
+    );
   });
 
   it("marks the profile as not yet created on a 404 rather than showing a broken card", async () => {

@@ -68,6 +68,49 @@ export type SessionInfo = {
  */
 export type Reference = { id: string; slug: string; label: string; tier?: number };
 
+/** Mirrors the `profile_details.religious_practice` CHECK (migration 0016). */
+export type ReligiousPractice =
+  | "not_practicing"
+  | "slightly_practicing"
+  | "moderately_practicing"
+  | "practicing"
+  | "very_practicing"
+  | "prefer_not_to_say";
+
+/** Mirrors the `profile_details.blood_group` CHECK. Never used for matching. */
+export type BloodGroup =
+  | "a_positive"
+  | "a_negative"
+  | "b_positive"
+  | "b_negative"
+  | "ab_positive"
+  | "ab_negative"
+  | "o_positive"
+  | "o_negative"
+  | "unknown"
+  | "prefer_not_to_say";
+
+export type SocialPlatform = "facebook" | "instagram" | "linkedin" | "x" | "youtube" | "website";
+
+export type SocialLinks = Partial<Record<SocialPlatform, string>>;
+
+/**
+ * Optional, visibility-scoped profile information (migration 0016).
+ *
+ * Each group carries its own visibility so that, for example, a blood group can
+ * stay private while the biodata is shared with members.
+ */
+export type ProfileDetails = {
+  religiousPractice: ReligiousPractice | null;
+  bloodGroup: BloodGroup | null;
+  biodata: string | null;
+  socialLinks: SocialLinks;
+  religiousPracticeVisibility: PhotoVisibility;
+  bloodGroupVisibility: PhotoVisibility;
+  biodataVisibility: PhotoVisibility;
+  socialLinksVisibility: PhotoVisibility;
+};
+
 export type Profile = {
   id: string;
   userId: string;
@@ -95,9 +138,22 @@ export type Profile = {
   interests: Reference[];
   isPublic: boolean;
   photoVisibility: PhotoVisibility;
+  /** Optional extras; null when the member has not saved any yet. */
+  details: ProfileDetails | null;
   completeness: number;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ProfileDetailsInput = {
+  religiousPractice?: ReligiousPractice | null;
+  bloodGroup?: BloodGroup | null;
+  biodata?: string | null;
+  socialLinks?: SocialLinks;
+  religiousPracticeVisibility?: PhotoVisibility;
+  bloodGroupVisibility?: PhotoVisibility;
+  biodataVisibility?: PhotoVisibility;
+  socialLinksVisibility?: PhotoVisibility;
 };
 
 export type ProfileInput = {
@@ -106,26 +162,28 @@ export type ProfileInput = {
   gender?: Gender;
   heightCm?: number;
   maritalStatus?: MaritalStatus;
-  religion?: string;
-  casteCommunity?: string;
-  educationId?: string;
-  educationDetail?: string;
-  professionId?: string;
-  professionDetail?: string;
-  incomeBand?: string;
+  religion?: string | null;
+  casteCommunity?: string | null;
+  educationId?: string | null;
+  educationDetail?: string | null;
+  professionId?: string | null;
+  professionDetail?: string | null;
+  incomeBand?: string | null;
   city?: string;
-  district?: string;
-  country?: string;
+  district?: string | null;
+  country?: string | null;
   lat?: number;
   lng?: number;
   locationConsent?: boolean;
   showExactLocation?: boolean;
-  about?: string;
+  about?: string | null;
   lifestyle?: Record<string, unknown>;
   /** Full replacement set for the profile's interests. */
   interestIds?: string[];
   isPublic?: boolean;
   photoVisibility?: PhotoVisibility;
+  /** Optional extras, written to the separate `profile_details` row. */
+  details?: ProfileDetailsInput;
 };
 
 export type PreferenceRule = {

@@ -23,9 +23,13 @@
   },
   "dependencies": {
     "@capacitor/android": "^6.2.2",
+    "@capacitor/app": "^6.0.3",
     "@capacitor/core": "^6.2.2",
+    "@capacitor/geolocation": "^6.1.1",
     "@supabase/supabase-js": "^2.45.0",
+    "dompurify": "^3.4.17",
     "gsap": "^3.12.5",
+    "marked": "^15.0.12",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2"

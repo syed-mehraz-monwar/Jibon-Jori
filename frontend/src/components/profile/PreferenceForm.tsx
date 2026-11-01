@@ -3,6 +3,7 @@ import { partnerPreferencesApi } from "../../api/partner-preferences.api";
 import { useReferenceData } from "../../context/ReferenceDataContext";
 import { useToast } from "../../context/ToastContext";
 import { ApiError } from "../../lib/http";
+import { GENDER_OPTIONS } from "../../lib/profile-options";
 import type { Gender, MaritalStatus, PartnerPreferences, PreferenceRule } from "../../lib/types";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
@@ -11,12 +12,6 @@ import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
 import { MultiCheckList, toggle } from "../ui/MultiCheckList";
 import { Textarea } from "../ui/Textarea";
-
-const GENDERS: { value: Gender; label: string }[] = [
-  { value: "male", label: "Male" },
-  { value: "female", label: "Female" },
-  { value: "other", label: "Other" },
-];
 
 const MARITAL: { value: MaritalStatus; label: string }[] = [
   { value: "never_married", label: "Never married" },
@@ -217,7 +212,7 @@ export function PreferenceForm({
 
         <fieldset className="mt-4 flex flex-wrap gap-4">
           <legend className="w-full text-sm font-medium text-slate-700">Preferred genders</legend>
-          {GENDERS.map((option) => (
+          {GENDER_OPTIONS.map((option) => (
             <label key={option.value} className="flex items-center gap-1.5 text-sm text-slate-700">
               <input
                 type="checkbox"

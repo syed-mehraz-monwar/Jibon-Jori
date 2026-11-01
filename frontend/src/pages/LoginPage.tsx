@@ -3,10 +3,11 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { ApiError } from "../lib/http";
+import { AuthLayout } from "../components/layout/AuthLayout";
 import { Button } from "../components/ui/Button";
-import { Card } from "../components/ui/Card";
 import { Field } from "../components/ui/Field";
 import { Input } from "../components/ui/Input";
+import { PasswordInput } from "../components/ui/PasswordInput";
 
 type LocationState = { from?: string };
 
@@ -46,8 +47,8 @@ export function LoginPage() {
       toast.success(`Welcome back, ${user.username}.`);
       navigate(redirectTo, { replace: true });
     } catch (caught) {
-      // The backend deliberately does not distinguish unknown identifier from a
-      // wrong password; show its message rather than guessing.
+      // Supabase deliberately does not distinguish an unknown address from a
+      // wrong password; show its mapped message rather than guessing.
       setError(caught instanceof ApiError ? caught.message : "Sign in failed. Please try again.");
     } finally {
       setSubmitting(false);
@@ -55,59 +56,57 @@ export function LoginPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-10">
-      <Link to="/" className="mb-6 text-center text-2xl font-bold">
-        <span className="jj-gradient-text">JibonJori</span>
-      </Link>
-
-      <Card title="Sign in">
-        <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
-          <Field
-            label="Email address"
-            htmlFor="identifier"
-            required
-            hint="Sign in with the email address you registered with."
-          >
-            <Input
-              id="identifier"
-              name="identifier"
-              autoComplete="email"
-              inputMode="email"
-              value={identifier}
-              onChange={(event) => setIdentifier(event.target.value)}
-              placeholder="arif@example.com"
-            />
-          </Field>
-
-          <Field label="Password" htmlFor="password" required>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </Field>
-
-          {error ? (
-            <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </p>
-          ) : null}
-
-          <Button type="submit" loading={submitting} className="w-full" size="lg">
-            Sign in
-          </Button>
-        </form>
-
-        <p className="mt-4 text-center text-sm text-slate-500">
-          No account yet?{" "}
+    <AuthLayout
+      title="Welcome back"
+      subtitle="Sign in to continue to your matches."
+      footer={
+        <>
+          New to JibonJori?{" "}
           <Link to="/register" className="font-medium text-brand-700 hover:underline">
-            Create one
+            Create an account
           </Link>
-        </p>
-      </Card>
-    </div>
+        </>
+      }
+    >
+      <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
+        <Field label="Email address" htmlFor="identifier" required>
+          <Input
+            id="identifier"
+            name="identifier"
+            autoComplete="email"
+            inputMode="email"
+            value={identifier}
+            onChange={(event) => setIdentifier(event.target.value)}
+            placeholder="you@example.com"
+          />
+        </Field>
+
+        <Field label="Password" htmlFor="password" required>
+          <PasswordInput
+            id="password"
+            name="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        </Field>
+
+        {error ? (
+          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="-mt-1 text-right">
+          <Link to="/forgot-password" className="text-sm font-medium text-brand-700 hover:underline">
+            Forgot password?
+          </Link>
+        </div>
+
+        <Button type="submit" loading={submitting} className="w-full" size="lg">
+          Sign in
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }

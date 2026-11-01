@@ -1,6 +1,7 @@
 import { partnerPreferencesApi } from "../api/partner-preferences.api";
 import { useAsync } from "../hooks/useAsync";
 import { ApiError } from "../lib/http";
+import { BackButton } from "../components/layout/BackButton";
 import { PageHeader } from "../components/layout/PageHeader";
 import { PreferenceForm } from "../components/profile/PreferenceForm";
 import { ErrorState } from "../components/ui/ErrorState";
@@ -18,6 +19,7 @@ export function PreferencesPage() {
       <PageHeader
         title="Partner preferences"
         description="These preferences feed directly into the partner-preference compatibility factor."
+        actions={<BackButton />}
       />
 
       {preferences.status === "loading" ? (

@@ -29,7 +29,7 @@ export function NotificationsPage() {
 
   const notifications = useAsync(
     (signal) =>
-      notificationsApi.listMine({ page, limit: 15, type, unread: unreadOnly ? true : undefined }, signal),
+      notificationsApi.listMine({ page, limit: 5, type, unread: unreadOnly ? true : undefined }, signal),
     [page, type, unreadOnly]
   );
 
