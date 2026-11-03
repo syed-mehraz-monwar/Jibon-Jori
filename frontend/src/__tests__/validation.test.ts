@@ -6,6 +6,7 @@ import {
   firebasePathError,
   heightError,
   mediaBytesError,
+  normalizePhoneNumber,
   otpCodeError,
   passwordError,
   phoneError,
@@ -46,9 +47,31 @@ describe("emailError / phoneError", () => {
 
   it("requires E.164 phone numbers", () => {
     expect(phoneError("+8801712345678")).toBeNull();
-    expect(phoneError("01712345678")).toMatch(/E\.164/);
+    // Bangladeshi national formats are normalized before validation.
+    expect(phoneError("01712345678")).toBeNull();
     expect(phoneError("+0123456789")).toMatch(/E\.164/);
     expect(phoneError("+1234567")).toMatch(/E\.164/);
+  });
+});
+
+describe("normalizePhoneNumber (Bangladesh)", () => {
+  it("normalizes national, country-code and E.164 formats to +880 E.164", () => {
+    expect(normalizePhoneNumber("01712345678")).toBe("+8801712345678");
+    expect(normalizePhoneNumber("8801712345678")).toBe("+8801712345678");
+    expect(normalizePhoneNumber("+8801712345678")).toBe("+8801712345678");
+    expect(normalizePhoneNumber("+880 1712 345 678")).toBe("+8801712345678");
+  });
+
+  it("rejects invalid Bangladeshi mobile numbers", () => {
+    expect(normalizePhoneNumber("0171234567")).toBeNull();
+    expect(normalizePhoneNumber("+0123456789")).toBeNull();
+    expect(normalizePhoneNumber("12345")).toBeNull();
+    expect(normalizePhoneNumber("not-a-phone")).toBeNull();
+  });
+
+  it("accepts a valid number and rejects an invalid one with a clear message", () => {
+    expect(phoneError("01712345678")).toBeNull();
+    expect(phoneError("0171234567")).toMatch(/valid Bangladesh E\.164 mobile number/);
   });
 });
 

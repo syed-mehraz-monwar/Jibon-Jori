@@ -1,10 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
-import { authApi } from "../api/auth.api";
+import { authApi, readPendingPhone } from "../api/auth.api";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { ApiError } from "../lib/http";
-import { deliveryNotice } from "../lib/otp";
+import { deliveryNotice, resendCooldownSecondsLeft } from "../lib/otp";
 import { otpCodeError } from "../lib/validation";
 import { AuthLayout } from "../components/layout/AuthLayout";
 import { Button } from "../components/ui/Button";
@@ -17,7 +17,8 @@ export function VerifyOtpPage() {
   const toast = useToast();
 
   const [userId, setUserId] = useState("");
-  const [channel, setChannel] = useState("email");
+  const [channel, setChannel] = useState<"email" | "phone">("email");
+  const [phone, setPhone] = useState("");
   const [delivered, setDelivered] = useState<boolean | null>(null);
   const [deliveredTo, setDeliveredTo] = useState("");
   const [deliveryReason, setDeliveryReason] = useState("");
@@ -26,18 +27,35 @@ export function VerifyOtpPage() {
   const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [resendAt, setResendAt] = useState<number | null>(null);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
-  // Registration writes the pending user id here, so a refresh on this page
-  // still knows which account the code belongs to, plus whether a code was
-  // actually delivered (R-012) so the copy below does not assert one is coming.
+  // Registration writes the pending user id / channel / phone here, so a refresh
+  // on this page still knows which account the code belongs to, plus whether a
+  // code was actually delivered (R-012) so the copy below does not assert one is
+  // coming.
   useEffect(() => {
     setUserId(sessionStorage.getItem("jibonjori.pendingUserId") ?? "");
-    setChannel(sessionStorage.getItem("jibonjori.pendingChannel") ?? "email");
+    setChannel((sessionStorage.getItem("jibonjori.pendingChannel") ?? "email") as "email" | "phone");
+    setPhone(readPendingPhone() ?? "");
     const stored = sessionStorage.getItem("jibonjori.pendingDelivered");
     setDelivered(stored === null ? null : stored === "true");
     setDeliveredTo(sessionStorage.getItem("jibonjori.pendingDeliveredTo") ?? "");
     setDeliveryReason(sessionStorage.getItem("jibonjori.pendingDeliveryReason") ?? "");
   }, []);
+
+  // Client-side resend cooldown (seconds) after a code was sent or after a
+  // successful verification cleared it.
+  useEffect(() => {
+    if (resendAt === null) {
+      setCooldownSeconds(0);
+      return;
+    }
+    const tick = () => setCooldownSeconds(resendCooldownSecondsLeft(resendAt, Date.now()));
+    tick();
+    const intervalId = window.setInterval(tick, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [resendAt]);
 
   if (status === "authenticated") {
     return <Navigate to="/app" replace />;
@@ -53,20 +71,28 @@ export function VerifyOtpPage() {
       setError(codeProblem);
       return;
     }
-    if (!userId) {
+    // Phone challenges are keyed by the phone number, not a pre-existing user id:
+    // the OTP send creates the account, so an empty user id is expected there.
+    if (!userId && channel !== "phone") {
       setError("We lost track of your registration. Please register again.");
       return;
     }
 
     setSubmitting(true);
     try {
-      const user = await verifyOtp(userId, code.trim());
+      const user = await verifyOtp(userId, code.trim(), {
+        channel: channel === "phone" ? "phone" : "email",
+        ...(channel === "phone" ? { phone } : {}),
+      });
+      setResendAt(null);
+      setCooldownSeconds(0);
       sessionStorage.removeItem("jibonjori.pendingUserId");
       sessionStorage.removeItem("jibonjori.pendingChannel");
       sessionStorage.removeItem("jibonjori.pendingDelivered");
       sessionStorage.removeItem("jibonjori.pendingDeliveryReason");
       sessionStorage.removeItem("jibonjori.pendingDeliveredTo");
-      toast.success(`Welcome, ${user.username}.`, "Your account is active.");
+      if (channel === "phone") sessionStorage.removeItem("jibonjori.pendingPhone");
+      toast.success(`Welcome, ${user.username}.`, channel === "phone" ? "Your phone number is now verified." : "Your account is active.");
       navigate("/app", { replace: true });
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : "Verification failed.");
@@ -76,20 +102,21 @@ export function VerifyOtpPage() {
   }
 
   async function onResend() {
-    if (!userId) {
+    if (!userId && channel !== "phone") {
       setError("We lost track of your registration. Please register again.");
       return;
     }
     setError(null);
     setResending(true);
     try {
-      const result = await authApi.requestOtp(userId);
+      const result = await authApi.requestOtp({ userId, channel, phone });
       sessionStorage.setItem("jibonjori.pendingDelivered", String(result.delivered));
       sessionStorage.setItem("jibonjori.pendingDeliveryReason", result.deliveryReason ?? "");
       sessionStorage.setItem("jibonjori.pendingDeliveredTo", result.deliveredTo);
       setDelivered(result.delivered);
       setDeliveredTo(result.deliveredTo);
       setDeliveryReason(result.deliveryReason ?? "");
+      setResendAt(Date.now());
 
       const copy = deliveryNotice(result, "resent");
       setNotice(copy.body);
@@ -180,10 +207,14 @@ export function VerifyOtpPage() {
       <button
         type="button"
         onClick={() => void onResend()}
-        disabled={resending || !userId}
+        disabled={resending || cooldownSeconds > 0 || !userId}
         className="mt-4 w-full rounded-lg py-2 text-sm font-medium text-brand-700 transition hover:underline disabled:opacity-50"
       >
-        {resending ? "Sending…" : "Resend code"}
+        {resending
+          ? "Sending…"
+          : cooldownSeconds > 0
+            ? `Resend code (${cooldownSeconds}s)`
+            : "Resend code"}
       </button>
     </AuthLayout>
   );

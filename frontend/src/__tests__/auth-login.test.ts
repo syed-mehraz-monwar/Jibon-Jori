@@ -138,4 +138,11 @@ describe("mapSignInError", () => {
     expect(mapped.status).toBe(503);
     expect(mapped.code).toBe("NETWORK_UNAVAILABLE");
   });
+
+  it("distinguishes an unverified phone from a wrong password", () => {
+    const mapped = mapSignInError({ message: "Phone number not confirmed", code: "phone_not_confirmed", status: 400 });
+    expect(mapped.status).toBe(400);
+    expect(mapped.code).toBe("PHONE_NOT_CONFIRMED");
+    expect(mapped.message).toMatch(/6-digit code/);
+  });
 });

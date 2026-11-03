@@ -14,9 +14,10 @@ This guide is for the teacher demonstration of the six evaluated features.
 1. **Session / JWT** — sign in and open a protected screen. (1 min)
 2. **Unique username** — run the availability check during registration or profile edit. (2 min)
 3. **Email verification** — request an OTP, read it, enter it, confirm verified. (2 min)
-4. **Cloud upload** — upload / replace a profile picture. (1 min)
-5. **Real-time commenting** — open two sessions on the same profile and post from one. (2 min)
-6. **Like / dislike live count** — like from one session, watch the other. (1 min)
+4. **Phone verification (SMS OTP)** — choose Phone at registration, receive the SMS OTP, enter it, confirm verified. (2 min; live demo requires the SMS provider to be configured — see `docs/PHONE_VERIFICATION_SETUP.md`).
+5. **Cloud upload** — upload / replace a profile picture. (1 min)
+6. **Real-time commenting** — open two sessions on the same profile and post from one. (2 min)
+7. **Like / dislike live count** — like from one session, watch the other. (1 min)
 
 ---
 
@@ -50,12 +51,20 @@ This guide is for the teacher demonstration of the six evaluated features.
 
 ## Feature 4 — Phone Verification (SMS OTP)
 
-- **Screen:** not currently enabled in the app UI for phone sign-up.
-- **Action:** not applicable.
-- **Input:** none.
-- **What the teacher should observe:** n/a.
-- **What proves it works:** n/a.
-- **Status:** **BLOCKED** — SMS provider is not configured; phone verification cannot be demonstrated end to end in this environment.
+- **Screen:** `/register` → phone channel → `/verify` → authenticated `/app`.
+- **Action:** choose Phone (SMS) at registration, receive a six-digit OTP via Supabase SMS OTP,
+  enter it, confirm.
+- **Input:** Bangladesh mobile number (national / `880` / `+880` forms normalized to `+880…`),
+  six-digit SMS code.
+- **What the teacher should observe:** an actual SMS OTP is sent through the configured SMS
+  provider (Twilio) after Supabase phone provider configuration; invalid code rejected; resend
+  cooldown respected; verified status applied only after successful verification.
+- **What proves it works:** real SMS delivery to a test phone, valid OTP accepted, account
+  becomes verified and usable.
+- **Two-session / device test:** not required.
+- **Status:** **IMPLEMENTED** — automated suites pass. **BLOCKED** for live demonstration —
+  SMS provider (Supabase Phone provider + Twilio) configuration and a real test number are still
+  pending manual setup; see `docs/PHONE_VERIFICATION_SETUP.md`.
 
 ## Feature 5 — Cloud Storage Image Upload
 
@@ -102,8 +111,9 @@ This guide is for the teacher demonstration of the six evaluated features.
 | Session | 1 min |
 | Username | 2 min |
 | Email OTP | 2 min |
+| Phone OTP | 2 min |
 | Upload | 1 min |
 | Comments (2 sessions) | 2 min |
 | Reactions (2 sessions) | 2 min |
 | Buffer / explanation | 2 min |
-| **Total** | **≈10 min** |
+| **Total** | **≈11 min** |

@@ -2,6 +2,7 @@ import { getSupabase, callRpc, invokeFunction, toApiError } from "../lib/supabas
 import { ApiError } from "../lib/http";
 import { isNativeApp } from "../lib/platform";
 import { deriveUserStatus } from "../lib/mappers";
+import { normalizePhoneNumber, phoneError } from "../lib/validation";
 import type { LoginResult, OtpChallenge, RegisterResult, Role, SessionInfo, User } from "../lib/types";
 
 export type RegisterInput = {
@@ -39,6 +40,9 @@ export type ProfileSnapshot = {
 };
 
 const PROFILE_SNAPSHOT = "username, role, is_suspended, deleted_at, created_at";
+
+/** Supabase Auth issues SMS/email OTPs valid for ten minutes by default. */
+const OTP_TTL_SECONDS = 600;
 
 /** Projects a Supabase auth user + profile row onto the app's `User` contract. */
 export function toUser(supaUser: SupaUser, profile: ProfileSnapshot | null): User {
@@ -83,6 +87,28 @@ function maskEmail(email: string): string {
   return `${head}${"*".repeat(Math.max(1, local.length - 2))}@${domain}`;
 }
 
+/** Masks a phone number for display: only the last two digits are shown. */
+function maskPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  return `***${digits.slice(-2)}`;
+}
+
+/**
+ * Classifies a Supabase SMS provider failure so the OTP screen can tell the user
+ * whether the provider was never configured or actually rejected the message.
+ */
+function isProviderConfigurationError(error: unknown): boolean {
+  const record = (error ?? {}) as { message?: unknown; code?: unknown };
+  const text = `${typeof record.code === "string" ? record.code : ""} ${typeof record.message === "string" ? record.message : ""}`.toUpperCase();
+  return (
+    text.includes("PROVIDER") ||
+    text.includes("NOT_CONFIGURED") ||
+    text.includes("CONFIGURATION") ||
+    text.includes("DISABLED") ||
+    text.includes("NOT_SUPPORTED")
+  );
+}
+
 /**
  * Maps a Supabase `signInWithPassword` failure onto an actionable `ApiError`.
  *
@@ -116,6 +142,13 @@ export function mapSignInError(error: unknown): ApiError {
       400,
       "EMAIL_NOT_CONFIRMED",
       "Your email address is not verified yet. Enter the 6-digit code we sent you, then sign in."
+    );
+  }
+  if (combined.includes("PHONE NOT CONFIRMED") || combined.includes("PHONE_NOT_CONFIRMED")) {
+    return new ApiError(
+      400,
+      "PHONE_NOT_CONFIRMED",
+      "Your phone number is not verified yet. Enter the 6-digit code we sent you, then sign in."
     );
   }
   if (
@@ -215,11 +248,54 @@ type EdgeSession = {
 export const authApi = {
   register: async (input: RegisterInput): Promise<RegisterResult> => {
     const email = input.email?.trim().toLowerCase();
+    const phone = input.phone ? normalizePhoneNumber(input.phone) : null;
+    const rawPhone = input.phone?.trim() ?? "";
+
+    if (rawPhone && !phone) {
+      throw new ApiError(400, "VALIDATION_ERROR", phoneError(rawPhone) ?? "Enter a valid Bangladesh mobile number.");
+    }
+    if (!email && !phone) {
+      throw new ApiError(400, "VALIDATION_ERROR", "An email address or phone number is required to register.");
+    }
+
+    // Phone verification path: Supabase Auth owns the SMS OTP lifecycle. The
+    // number is normalized first, the provider is configured server-side, and a
+    // verified `phone_confirmed_at` is the only thing that marks the user active.
+    if (phone) {
+      const { error } = await getSupabase().auth.signInWithOtp({
+        phone,
+        options: { shouldCreateUser: true, data: { username: input.username.toLowerCase() } },
+      });
+      const deliveryReason = error ? (isProviderConfigurationError(error) ? "NO_PROVIDER" : "DELIVERY_FAILED") : null;
+
+      if (error) {
+        // The account may have been created even when the SMS did not go out;
+        // the user simply cannot complete verification until a code arrives.
+        return {
+          user: null,
+          channel: "phone",
+          deliveredTo: maskPhone(phone),
+          expiresInSeconds: OTP_TTL_SECONDS,
+          delivered: false,
+          deliveryProvider: null,
+          deliveryReason,
+        };
+      }
+
+      setPendingPhone(phone);
+      return {
+        user: null,
+        channel: "phone",
+        deliveredTo: maskPhone(phone),
+        expiresInSeconds: OTP_TTL_SECONDS,
+        delivered: true,
+        deliveryProvider: "supabase-auth",
+        deliveryReason: null,
+      };
+    }
+
     if (!email) {
       throw new ApiError(400, "VALIDATION_ERROR", "An email address is required to register.");
-    }
-    if (input.phone) {
-      throw new ApiError(400, "VALIDATION_ERROR", "Phone-number sign-up is not enabled on this deployment.");
     }
 
     const { data, error } = await getSupabase().auth.signUp({
@@ -267,9 +343,40 @@ export const authApi = {
     };
   },
 
-  /** Resends the sign-up confirmation email. */
-  requestOtp: async (_userId: string, _purpose: "register" = "register"): Promise<OtpChallenge> => {
-    const email = readPendingEmail();
+  /**
+   * Requests a new sign-up OTP.
+   *
+   * Email challenges reuse the pending-registration email; phone challenges go
+   * through Supabase Auth's native SMS OTP (`signInWithOtp`), which is also the
+   * path used when the account has to be created for a phone number that has
+   * never signed in before. The reply reports whether a message could actually
+   * be handed to the provider.
+   */
+  requestOtp: async (input: {
+    userId?: string;
+    channel?: "email" | "phone";
+    email?: string;
+    phone?: string;
+  } = {}): Promise<OtpChallenge> => {
+    if (input.channel === "phone") {
+      const phone = input.phone?.trim() || readPendingPhone();
+      if (!phone) {
+        throw new ApiError(400, "VALIDATION_ERROR", "Start registration again to request a new code.");
+      }
+      const { error } = await getSupabase().auth.signInWithOtp({ phone, options: { shouldCreateUser: true } });
+      const delivered = !error;
+      const deliveryReason = error ? (isProviderConfigurationError(error) ? "NO_PROVIDER" : "DELIVERY_FAILED") : null;
+      return {
+        channel: "phone",
+        deliveredTo: maskPhone(phone),
+        expiresInSeconds: OTP_TTL_SECONDS,
+        delivered,
+        deliveryProvider: delivered ? "supabase-auth" : null,
+        deliveryReason,
+      };
+    }
+
+    const email = input.email?.trim().toLowerCase() || readPendingEmail();
     if (!email) {
       throw new ApiError(400, "VALIDATION_ERROR", "Start registration again to request a new code.");
     }
@@ -285,7 +392,29 @@ export const authApi = {
     };
   },
 
-  verifyOtp: async (input: { userId: string; purpose: "register"; code: string }): Promise<LoginResult> => {
+  verifyOtp: async (input: {
+    userId: string;
+    purpose: "register";
+    code: string;
+    channel?: "email" | "phone";
+    phone?: string;
+  }): Promise<LoginResult> => {
+    // Phone challenges are verified with the SMS OTP type against the normalized
+    // phone number; the authoritative verified state lives on the Supabase auth
+    // user (`phone_confirmed_at`), which a client can never set directly.
+    if (input.channel === "phone") {
+      const phone = input.phone?.trim() || readPendingPhone();
+      if (!phone) {
+        throw new ApiError(400, "VALIDATION_ERROR", "Enter the phone number you registered with, then the code.");
+      }
+      const { data, error } = await getSupabase().auth.verifyOtp({ phone, token: input.code, type: "sms" });
+      if (error || !data.user || !data.session) {
+        throw new ApiError(400, "INVALID_OTP", "That code is not valid or has expired.");
+      }
+      const user = await loadUser(data.user as SupaUser);
+      return { accessToken: data.session.access_token, refreshToken: data.session.refresh_token, user };
+    }
+
     const email = readPendingEmail();
     if (!email) {
       throw new ApiError(400, "VALIDATION_ERROR", "Enter the email address you registered with, then the code.");
@@ -300,11 +429,27 @@ export const authApi = {
 
   login: async (input: LoginInput): Promise<LoginResult> => {
     const identifier = input.identifier.trim();
-    if (!identifier) throw new ApiError(400, "VALIDATION_ERROR", "Enter your email address.");
+    if (!identifier) throw new ApiError(400, "VALIDATION_ERROR", "Enter your email address or phone number.");
     // Passwords are never trimmed or case-folded: what the user typed is what
     // Supabase must verify. Only the identifier (email/username) is normalized.
     const password = input.password;
     if (!password) throw new ApiError(400, "VALIDATION_ERROR", "Enter your password.");
+
+    // Supabase Auth accepts a phone + password credential for phone numbers, so
+    // a bare (normalized) phone identifier signs in directly; it never falls into
+    // the username resolver. The digit-only shape keeps it clear of username logins.
+    if (/^\+?[0-9]{6,14}$/.test(identifier)) {
+      const phone = normalizePhoneNumber(identifier) ?? identifier;
+      const result = await getSupabase().auth.signInWithPassword({ phone, password });
+      if (result.error) throw mapSignInError(result.error);
+      if (!result.data.user || !result.data.session) {
+        // No session means this phone was never verified (or is unknown to the
+        // auth layer): route to the SMS OTP step instead of a wrong-password error.
+        throw new ApiError(400, "PHONE_NOT_CONFIRMED", "Your phone number is not verified yet. Enter the 6-digit code we sent you, then sign in.");
+      }
+      const user = await loadUser(result.data.user as SupaUser);
+      return { accessToken: result.data.session.access_token, refreshToken: result.data.session.refresh_token, user };
+    }
 
     // Supabase Auth signs in with email + password only. When the identifier
     // looks like an email address it is used directly (trimmed and lowercased,
@@ -449,6 +594,7 @@ export const authApi = {
 };
 
 const PENDING_EMAIL_KEY = "jibonjori.pendingEmail";
+const PENDING_PHONE_KEY = "jibonjori.pendingPhone";
 
 function readPendingEmail(): string | null {
   try {
@@ -464,5 +610,23 @@ export function setPendingEmail(email: string): void {
     window.sessionStorage.setItem(PENDING_EMAIL_KEY, email);
   } catch {
     /* sessionStorage may be unavailable; the OTP step then asks for the email */
+  }
+}
+
+/** Records the normalized phone a phone registration/verification was started with. */
+export function readPendingPhone(): string | null {
+  try {
+    return window.sessionStorage.getItem(PENDING_PHONE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Records the normalized phone a phone registration/verification challenge belongs to. */
+export function setPendingPhone(phone: string): void {
+  try {
+    window.sessionStorage.setItem(PENDING_PHONE_KEY, phone);
+  } catch {
+    /* sessionStorage may be unavailable; the OTP step then asks for the phone */
   }
 }

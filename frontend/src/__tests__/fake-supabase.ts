@@ -28,6 +28,14 @@ export type FakeAuth = {
     user_metadata?: Record<string, unknown>;
   } | null;
   credentials?: { email: string; password: string } | null;
+  /** Last `signInWithOtp` (SMS/email OTP send) request, for assertions. */
+  lastOtpRequest: { phone: string; options?: { shouldCreateUser?: boolean; data?: Record<string, unknown> } } | null;
+  /** Last `verifyOtp` verification request, for assertions. */
+  lastOtpVerify: { phone?: string; email?: string; token: string; type: string } | null;
+  /** Injected send failure (e.g. SMS provider not configured) for OTP tests. */
+  otpError: { message: string; status?: number; code?: string } | null;
+  /** Injected verify failure (e.g. wrong/expired code) for OTP tests. */
+  otpVerifyError: { message: string; status?: number; code?: string } | null;
 };
 
 type OrderBy = { column: string; ascending: boolean };
@@ -267,7 +275,7 @@ function emptyState(): FakeDb {
     rpcs: {},
     functions: {},
     storage: { uploads: [], signedUrl: "https://signed.example/object", uploadError: null },
-    auth: { session: null, user: null, credentials: null },
+    auth: { session: null, user: null, credentials: null, lastOtpRequest: null, lastOtpVerify: null, otpError: null, otpVerifyError: null },
   };
 }
 
@@ -312,10 +320,21 @@ export class FakeSupabase {
       return { data: { user: null, session: null }, error: { message: "Invalid login credentials", status: 400 } };
     },
     signUp: async () => ({ data: { user: this.state.auth.user, session: null }, error: null }),
-    verifyOtp: async () => ({
-      data: { user: this.state.auth.user, session: this.state.auth.session },
-      error: null,
-    }),
+    signInWithOtp: async ({ phone, options }: { phone: string; options?: { shouldCreateUser?: boolean; data?: Record<string, unknown> } }) => {
+      this.state.auth.lastOtpRequest = { phone, options };
+      if (this.state.auth.otpError) {
+        return { data: { user: null, session: null, messageId: null }, error: this.state.auth.otpError };
+      }
+      // OTP send is fire-and-forget: the user/session only exist after verify.
+      return { data: { user: null, session: null, messageId: "fake-otp-message-id" }, error: null };
+    },
+    verifyOtp: async (credentials: { phone?: string; email?: string; token: string; type: string }) => {
+      this.state.auth.lastOtpVerify = credentials;
+      if (this.state.auth.otpVerifyError) {
+        return { data: { user: null, session: null }, error: this.state.auth.otpVerifyError };
+      }
+      return { data: { user: this.state.auth.user, session: this.state.auth.session }, error: null };
+    },
     resend: async () => ({ data: {}, error: null }),
     refreshSession: async () => ({ data: { session: this.state.auth.session }, error: null }),
     signOut: async () => {

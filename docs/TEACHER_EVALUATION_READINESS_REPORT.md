@@ -19,7 +19,7 @@
 | Session / JWT authentication | **PASS** | **PASS** (auth suites) | **PASS** (live login/logout/re-login/refresh via cloud probes) | **NOT RUN** (physical device) | **PARTIAL** — device-level session behaviour pending |
 | Real-time unique username verification | **PASS** | **PASS** (RPC/UI suites) | **PARTIAL** (DB unique + RPC verified in code/migrations; live duplicate-rejection probe not executed this pass) | **NOT RUN** | **PARTIAL** |
 | Email verification | **PASS** | **PASS** (OTP delivery/verification suites) | **PARTIAL** (Brevo-backed flow implemented; real inbox OTP observation not re-executed this pass) | **NOT RUN** | **PARTIAL** |
-| Phone verification | **NOT IMPLEMENTED** | **N/A** | **BLOCKED** (SMS provider not configured) | **NOT RUN** | **BLOCKED** |
+| Phone verification | **PASS** (implemented via Supabase SMS OTP) | **PASS** (phone OTP + normalization suites: 12 new tests) | **BLOCKED** (SMS provider not configured) | **NOT RUN** | **BLOCKED** (live SMS demo pending provider setup) |
 | Cloud storage image upload | **PASS** | **PASS** (media suites) | **PASS** (live upload → Storage → DB → signed URL: 200/201/200) | **NOT RUN** (full user flow) | **PARTIAL** |
 | Real-time commenting | **PASS** | **PASS** (realtime/comment suites) | **PARTIAL** (backend persistence + realtime wiring verified; two-session live update not executed) | **NOT RUN** | **PARTIAL** |
 | Like / dislike live count | **PASS** | **PASS** (realtime/interaction suites) | **PARTIAL** (backend + realtime wiring verified; two-session live update not executed) | **NOT RUN** | **PARTIAL** |
@@ -29,7 +29,11 @@
 - Session/JWT: Supabase auth client, refresh, logout, restore, protected operations, error mapping.
 - Username: availability RPC, unique constraint, reserved-name guard, frontend debounce/stale handling, validation.
 - Email: six-digit OTP flow (Brevo), resend, expiry/invalid handling, verification gating.
-- Phone: not enabled (SMS provider unconfigured) — documented blocker.
+- Phone: implemented — Supabase Auth SMS OTP (`signInWithOtp` / `verifyOtp` type `sms` / resend),
+  Bangladesh number normalization to `+880…`, resend cooldown, delivery-failure handling,
+  phone login mapping. No DB migration required (Auth `phone_confirmed_at` authoritative).
+  SMS provider configuration (Supabase Phone provider + Twilio) still pending — see
+  `docs/PHONE_VERIFICATION_SETUP.md`.
 - Upload: Supabase Storage + metadata + visibility + validation.
 - Comments: persisted comments, pagination (5), realtime `comment:new` with id dedupe.
 - Reactions: like/dislike/favourite, DB uniqueness, realtime `like:new`, live counts.
@@ -55,22 +59,22 @@
 
 - Google Maps key (Maps JS + Geocoding) — pending.
 - LLM API key — pending.
-- SMS provider (phone OTP) — pending/unavailable.
+- SMS provider (phone OTP) — Twilio via Supabase Auth — **manual configuration pending**.
 
 ## 9. Test commands and actual output summaries
 
-- `npm run verify` → **exit 0** (typecheck, lint, build, 166/166 tests, deploy 16/16, release-gate 21/21, APK scan CLEAN).
+- `npm run verify` → **exit 0** (typecheck, lint, build, **184/184 tests**, deploy 16/16, release-gate 21/21, APK scan CLEAN).
 - `npm run test:apk` → **CLEAN**.
 - Live cloud probes (prior pass): auth cycles, storage, AI fallback.
 
 ## 10. APK path, size, and hash
 
 - Final APK: `D:/Zeem/JibonJori-Final.apk` — SHA256 `6A8015D0D2867D584F76D0FF35A84385ACFB60F7DB39FF99D4EFD93391ED1278`, 7,605,975 bytes.
-- Evaluation APK (this pass): `D:/Zeem/JibonJori-Evaluation.apk` — pending build/copy (in progress).
+- Evaluation APK (this pass): `D:/Zeem/JibonJori-Evaluation.apk` — **built successfully**, saved, size **7,605,975 bytes**, SHA256 **`7C76C02D0F457E0489F095E5489A0CC6C1025B253305A2E3CC28ABD3190D6416`**, package `com.jibonjori.app`, debug variant, forbidden-content scan **CLEAN**.
 
 ## 11. Remaining blockers
 
-- Phone verification (SMS) — **BLOCKED**.
+- Phone verification (SMS) — **BLOCKED** (implementation added; SMS provider + real test number pending manual setup).
 - Real LLM — **BLOCKED**.
 - Google Maps reverse geocoding — **BLOCKED**.
 - Recovery email delivery — **BLOCKED**.
@@ -79,9 +83,9 @@
 
 ## 12. Final statuses
 
-- **PASS** — Session core flows, username logic, upload chain, comment/reaction automated suites.
+- **PASS** — Session core flows, username logic, upload chain, comment/reaction automated suites; phone SMS implementation + automated suites added and green.
 - **PARTIAL** — features whose real end-to-end or two-session proof is pending.
-- **BLOCKED** — phone verification (SMS), plus prior external blockers.
+- **BLOCKED** — phone verification (SMS) live delivery, real LLM, Google Maps reverse geocoding, recovery email.
 
 ---
 
@@ -95,6 +99,6 @@
 - Email OTP tested with actual received OTP: **PARTIAL** (implemented + suites; live inbox observation pending).
 - Phone OTP with actual SMS: **BLOCKED**.
 - Automated verification chain passes: **YES** (`npm run verify` exit 0).
-- Evaluation APK built and scanned: **IN PROGRESS** (final build + scan + save as `D:/Zeem/JibonJori-Evaluation.apk`).
+- Evaluation APK built and scanned: **PASS** (rebuilt after phone implementation; scan CLEAN; delivered as `D:/Zeem/JibonJori-Evaluation.apk`).
 - Teacher demo guide ready: **YES** (`docs/TEACHER_EVALUATION_DEMO_GUIDE.md`).
 - Final readiness report: **YES** (this document).

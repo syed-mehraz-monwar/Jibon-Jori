@@ -21,7 +21,7 @@ type AuthContextValue = {
   isAdmin: boolean;
   login: (identifier: string, password: string) => Promise<User>;
   register: (input: RegisterInput) => Promise<RegisterResult>;
-  verifyOtp: (userId: string, code: string) => Promise<User>;
+  verifyOtp: (userId: string, code: string, options?: { channel?: "email" | "phone"; phone?: string }) => Promise<User>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 };
@@ -103,8 +103,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: user?.role === "admin",
       login: async (identifier, password) => applySession(await authApi.login({ identifier, password })),
       register: (input) => authApi.register(input),
-      verifyOtp: async (userId, code) =>
-        applySession(await authApi.verifyOtp({ userId, purpose: "register", code })),
+      verifyOtp: async (userId, code, options) => {
+        const user = await authApi.verifyOtp({
+          userId,
+          purpose: "register",
+          code,
+          ...(options?.channel === "phone" ? { phone: options?.phone ?? "" } : {}),
+        });
+        return applySession(user);
+      },
       logout: async () => {
         try {
           await authApi.logout();

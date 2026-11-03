@@ -25,7 +25,7 @@ Command executed: `npm run verify` (frontend).
 | TypeScript | `npm run typecheck` | **PASS** (exit 0) |
 | Lint | `npm run lint` | **PASS** (exit 0) |
 | Production build | `npm run build` | **PASS** (exit 0) |
-| Unit + component tests | `npm test` | **PASS — 166/166 tests (21 files)** |
+| Unit + component tests | `npm test` | **PASS — 184/184 tests (22 files)** |
 | Deployment checks | `npm run test:deploy` | **PASS — 16/16** |
 | Release gate | `npm run test:release-gate` | **PASS — 21/21** |
 | APK security scan | `npm run test:apk` | **PASS — CLEAN** |
@@ -33,7 +33,7 @@ Command executed: `npm run verify` (frontend).
 
 Test audit details:
 
-- Test files: **21** passed; tests: **166 passed**, **0 failed**, **0 skipped**, **0 todo**.
+- Test files: **22** passed; tests: **184 passed**, **0 failed**, **0 skipped**, **0 todo**.
 - No `it.skip` / `describe.skip` / `xit` / `todo` usage found.
 - `vi.mock` usage is confined to module boundaries (API clients, Capacitor platform, SocketContext, Supabase client) in unit tests — not evidence of tests that bypass the implementation under test.
 
@@ -44,7 +44,7 @@ Test audit details:
 | Session / JWT | **OK** | **PASS** | **PASS** (live login/logout/re-login/refresh cycles) | **NOT RUN** | **PARTIAL** |
 | Unique username | **OK** | **PASS** | **PARTIAL** (unique constraint + RPC in migrations verified; live duplicate-claim probe not executed in this pass) | **NOT RUN** | **PARTIAL** |
 | Email verification | **OK** | **PASS** | **PARTIAL** (Brevo-backed OTP implemented + suites green; live inbox delivery re-verified not executed in this pass) | **NOT RUN** | **PARTIAL** |
-| Phone verification | **MISSING** | N/A | **BLOCKED** | **NOT RUN** | **BLOCKED** |
+| Phone verification | **PARTIAL → now IMPLEMENTED** | **PASS** (phone OTP + normalization suites added: 12 new mocked tests; 184/184 suite green) | **BLOCKED** (SMS provider not configured) | **NOT RUN** | **BLOCKED** (live SMS pending provider setup) |
 | Cloud upload | **OK** | **PASS** | **PASS** (live upload → Storage → DB → signed URL: 200/201/200) | **NOT RUN** (full user flow) | **PARTIAL** |
 | Real-time commenting | **OK** | **PASS** | **PARTIAL** (persistence + realtime wiring verified; live two-session update not executed) | **NOT RUN** | **PARTIAL** |
 | Like / dislike live count | **OK** | **PASS** | **PARTIAL** (backend + realtime wiring verified; live two-session update not executed) | **NOT RUN** | **PARTIAL** |
@@ -60,7 +60,7 @@ Test audit details:
 
 - Evaluation APK: `D:/Zeem/JibonJori-Evaluation.apk`
 - Size: **7,605,975 bytes**
-- SHA-256: **`6A8015D0D2867D584F76D0FF35A84385ACFB60F7DB39FF99D4EFD93391ED1278`**
+- SHA-256: **`7C76C02D0F457E0489F095E5489A0CC6C1025B253305A2E3CC28ABD3190D6416`**
 - Package ID: **`com.jibonjori.app`**
 - Variant: debug
 - Supabase origin: `https://jjbihxtthpclalruepul.supabase.co`
@@ -69,7 +69,7 @@ Test audit details:
 
 ## F. Failed or blocked tests
 
-1. Phone verification (SMS OTP) — **BLOCKED** (SMS provider not configured; implementation not present).
+1. Phone verification (SMS OTP) — **BLOCKED** for real delivery (implementation added this pass; SMS provider via Supabase Phone provider + Twilio still requires manual dashboard configuration and a real test number). Automated phone suites **PASS**.
 2. Real LLM assistant — **BLOCKED** (LLM API key absent).
 3. Google Maps reverse geocoding — **BLOCKED** (Maps key absent).
 4. Password-recovery email delivery — **BLOCKED** (end-to-end not observed).
@@ -95,8 +95,8 @@ The JibonJori six-feature implementation is **implemented**, the **automated ver
 
 ## Final response summary for the QA master prompt
 
-- **Automated suite:** PASS — 166/166 tests (21 files), deploy 16/16, release-gate 21/21, APK scan CLEAN, `npm run verify` exit 0.
-- **Six features:** implemented with honest statuses; phone verification BLOCKED; live two-session and live-email proofs NOT RUN.
+- **Automated suite:** PASS — 184/184 tests (22 files), deploy 16/16, release-gate 21/21, APK scan CLEAN, `npm run verify` exit 0.
+- **Six features:** implemented with honest statuses; phone verification implemented + automated PASS, real SMS BLOCKED; live two-session and live-email proofs NOT RUN.
 - **Security:** PASS — CLEAN scans, RLS suites previously green, no secrets committed.
-- **Android:** evaluation APK delivered — `D:/Zeem/JibonJori-Evaluation.apk`, SHA256 `6A8015D0D2867D584F76D0FF35A84385ACFB60F7DB39FF99D4EFD93391ED1278`, 7,605,975 bytes, package `com.jibonjori.app`, scan CLEAN; device install/test NOT RUN.
+- **Android:** evaluation APK delivered — `D:/Zeem/JibonJori-Evaluation.apk`, SHA256 `7C76C02D0F457E0489F095E5489A0CC6C1025B253305A2E3CC28ABD3190D6416`, 7,605,975 bytes, package `com.jibonjori.app`, scan CLEAN; device install/test NOT RUN.
 - **Final readiness:** **CONDITIONALLY READY** — with explicit blockers/not-run items documented.

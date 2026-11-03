@@ -11,7 +11,7 @@
  *     here is the real response key set, so a future re-nesting breaks the test.
  */
 import { describe, expect, it } from "vitest";
-import { codeCannotArrive, deliveryNotice, expiryMinutes } from "../lib/otp";
+import { codeCannotArrive, deliveryNotice, expiryMinutes, RESEND_COOLDOWN_SECONDS, resendCooldownSecondsLeft } from "../lib/otp";
 import type { OtpChallenge, RegisterResult } from "../lib/types";
 
 const base: OtpChallenge = {
@@ -66,6 +66,18 @@ describe("deliveryNotice", () => {
 
   it("never reports an expiry below one minute", () => {
     expect(expiryMinutes({ ...base, expiresInSeconds: 5 })).toBe("1 minute(s)");
+  });
+
+  it("starts a resend cooldown that counts down from the last send", () => {
+    expect(resendCooldownSecondsLeft(null)).toBe(0);
+    const justSent = Date.now() - 1000;
+    expect(resendCooldownSecondsLeft(justSent)).toBeLessThanOrEqual(RESEND_COOLDOWN_SECONDS);
+    expect(resendCooldownSecondsLeft(justSent)).toBeGreaterThan(0);
+  });
+
+  it("expires the cooldown after the window elapses", () => {
+    const sentAt = Date.now() - (RESEND_COOLDOWN_SECONDS * 1000 + 1000);
+    expect(resendCooldownSecondsLeft(sentAt)).toBe(0);
   });
 });
 

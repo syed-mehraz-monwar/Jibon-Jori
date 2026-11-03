@@ -51,7 +51,7 @@ export type OtpChallenge = {
   deliveryReason: OtpDeliveryReason;
 };
 
-export type RegisterResult = { user: User } & OtpChallenge;
+export type RegisterResult = { user: User | null } & OtpChallenge;
 
 export type SessionInfo = {
   id: string;

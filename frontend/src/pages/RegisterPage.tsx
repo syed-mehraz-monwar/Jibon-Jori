@@ -5,7 +5,7 @@ import { useToast } from "../context/ToastContext";
 import { useUsernameAvailability } from "../hooks/useUsernameAvailability";
 import { ApiError } from "../lib/http";
 import { deliveryNotice } from "../lib/otp";
-import { emailError, passwordError, phoneError, usernameError } from "../lib/validation";
+import { emailError, normalizePhoneNumber, passwordError, phoneError, usernameError } from "../lib/validation";
 import { cn } from "../lib/cn";
 import { AuthLayout } from "../components/layout/AuthLayout";
 import { Button } from "../components/ui/Button";
@@ -66,14 +66,18 @@ export function RegisterPage() {
 
     setSubmitting(true);
     try {
+      const normalizedPhone = channel === "phone" ? normalizePhoneNumber(phone) ?? phone.trim() : null;
       const result = await register({
         username: username.trim(),
         password,
-        ...(channel === "email" ? { email: email.trim() } : { phone: phone.trim() }),
+        ...(channel === "email" ? { email: email.trim() } : { phone: normalizedPhone ?? undefined }),
       });
 
-      sessionStorage.setItem("jibonjori.pendingUserId", result.user.id);
+      sessionStorage.setItem("jibonjori.pendingUserId", result.user?.id ?? "");
       sessionStorage.setItem("jibonjori.pendingChannel", result.channel);
+      if (channel === "phone" && normalizedPhone) {
+        sessionStorage.setItem("jibonjori.pendingPhone", normalizedPhone);
+      }
       // R-012: carry the delivery truth across the navigation so the verification
       // screen can be honest instead of asserting a code is on its way.
       sessionStorage.setItem("jibonjori.pendingDelivered", String(result.delivered));
@@ -98,7 +102,11 @@ export function RegisterPage() {
   return (
     <AuthLayout
       title="Create your account"
-      subtitle="A few details first, then we verify your email with a six-digit code."
+      subtitle={
+        channel === "phone"
+          ? "A few details first, then we verify your phone with a six-digit SMS code."
+          : "A few details first, then we verify your email with a six-digit code."
+      }
       footer={
         <>
           Already registered?{" "}
@@ -199,7 +207,7 @@ export function RegisterPage() {
             htmlFor="phone"
             required
             error={phone ? phoneError(phone) : null}
-            hint="E.164 format, for example +8801712345678."
+            hint="Bangladesh mobile number, for example 01712345678 or +8801712345678. We will send a six-digit SMS code."
           >
             <Input
               id="phone"

@@ -46,6 +46,18 @@ export function expiryMinutes(challenge: OtpChallenge): string {
   return `${Math.max(1, Math.round(challenge.expiresInSeconds / 60))} minute(s)`;
 }
 
+/** Minimum seconds a caller must wait before requesting a new OTP. */
+export const RESEND_COOLDOWN_SECONDS = 30;
+
+/**
+ * Seconds remaining before a resend may be attempted. Starts counting from the
+ * moment a code was last sent; a verify/resend resets it via the caller.
+ */
+export function resendCooldownSecondsLeft(resendAt: number | null, now: number = Date.now()): number {
+  if (resendAt === null) return 0;
+  return Math.max(0, Math.ceil((RESEND_COOLDOWN_SECONDS * 1000 - (now - resendAt)) / 1000));
+}
+
 /** True when a verification screen should explain that no code can arrive. */
 export function codeCannotArrive(challenge: OtpChallenge | null): boolean {
   return challenge !== null && !challenge.delivered;

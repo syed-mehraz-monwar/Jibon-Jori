@@ -6,7 +6,13 @@
  */
 
 export const USERNAME_PATTERN = /^[a-zA-Z0-9_]+$/;
-export const PHONE_PATTERN = /^\+[1-9][0-9]{7,14}$/;
+/**
+ * E.164 form of a Bangladeshi mobile number, e.g. `+8801712345678`.
+ * `+880` + the 10-digit significant number that starts with the mobile prefix `1`.
+ */
+export const BD_PHONE_PATTERN = /^\+880[1-9][0-9]{9}$/;
+const BD_LOCAL_PATTERN = /^01\d{9}$/; // national format: 01712345678
+const BD_COUNTRY_PATTERN = /^880\d{10}$/; // international prefix form: 8801712345678
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const PASSWORD_MIN = 8;
@@ -45,9 +51,37 @@ export function emailError(email: string): string | null {
   return null;
 }
 
+/**
+ * Normalizes a Bangladesh mobile number to E.164 (`+880XXXXXXXXXX`) before any
+ * Supabase Auth or provider call is made.
+ *
+ * Accepts the three common input shapes used by users and OTP flows:
+ *   - national:     `01712345678`  -> `+8801712345678`
+ *   - country code:`8801712345678` -> `+8801712345678`
+ *   - E.164:       `+8801712345678` -> `+8801712345678`
+ *
+ * Returns `null` for anything that is not a valid Bangladeshi mobile number, so
+ * callers can reject before hitting the network and never send a malformed number
+ * to the SMS provider. The normalization deliberately strips formatting
+ * characters (spaces, dashes, parentheses) before matching.
+ */
+export function normalizePhoneNumber(value: string): string | null {
+  const digits = value.replace(/[^\d+]/g, "");
+  const withoutPlus = digits.startsWith("+") ? digits.slice(1) : digits;
+  let normalized: string | null = null;
+  if (BD_LOCAL_PATTERN.test(withoutPlus)) {
+    normalized = `+880${withoutPlus.slice(1)}`;
+  } else if (BD_COUNTRY_PATTERN.test(withoutPlus)) {
+    normalized = `+880${withoutPlus.slice(3)}`;
+  }
+  if (normalized !== null && BD_PHONE_PATTERN.test(normalized)) return normalized;
+  return null;
+}
+
 export function phoneError(phone: string): string | null {
   if (!phone.trim()) return "Enter a phone number.";
-  if (!PHONE_PATTERN.test(phone.trim())) return "Use E.164 format, for example +8801712345678.";
+  const normalized = normalizePhoneNumber(phone);
+  if (!normalized) return "Enter a valid Bangladesh E.164 mobile number, for example +8801712345678.";
   return null;
 }
 
