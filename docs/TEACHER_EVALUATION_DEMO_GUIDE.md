@@ -1,0 +1,109 @@
+# TEACHER EVALUATION DEMO GUIDE — JibonJori
+
+**Project:** JibonJori — AI-assisted matrimony platform
+**Supabase project:** `jjbihxtthpclalruepul` — `https://jjbihxtthpclalruepul.supabase.co`
+**Android package:** `com.jibonjori.app`
+**Report date:** 2026-11-03
+
+This guide is for the teacher demonstration of the six evaluated features.
+
+---
+
+## Recommended demonstration sequence (approx. 10 minutes)
+
+1. **Session / JWT** — sign in and open a protected screen. (1 min)
+2. **Unique username** — run the availability check during registration or profile edit. (2 min)
+3. **Email verification** — request an OTP, read it, enter it, confirm verified. (2 min)
+4. **Cloud upload** — upload / replace a profile picture. (1 min)
+5. **Real-time commenting** — open two sessions on the same profile and post from one. (2 min)
+6. **Like / dislike live count** — like from one session, watch the other. (1 min)
+
+---
+
+## Feature 1 — Session / JWT Authentication
+
+- **Screen:** `/login`, `/register`, `/verify`, authenticated shell `/app`.
+- **Action:** Register or log in; verify email; open a protected page.
+- **Input:** credentials / OTP.
+- **What the teacher should observe:** an authenticated Supabase session is created; protected screens load; token refresh happens automatically; after logout protected access is refused; after re-login the app works.
+- **What proves it works:** an access token + refresh token exist (Supabase session), protected API calls succeed, unauthenticated calls are rejected.
+- **Two-session / device test:** not required for this feature itself; a single session plus a logout/protected-access check is sufficient for the demo.
+- **If it fails:** check Supabase Auth state; do not fall back to local token invention.
+
+## Feature 2 — Real-Time Unique Username Verification
+
+- **Screen:** `/register` (username field) and profile edit.
+- **Action:** type a username; observe debounced availability check (checking / available / taken / invalid).
+- **Input:** new or existing username.
+- **What the teacher should observe:** debounced check; clear states; DB-level uniqueness (`profiles.username` unique + `username_available` RPC + reserved-name guard + shape constraints).
+- **What proves it works:** a new username is available; an existing username shows taken; a duplicate at DB level is rejected even under simultaneous submission.
+- **Two-session / device test:** for the DB uniqueness proof, two concurrent submissions with the same username must yield one success and one failure.
+
+## Feature 3 — Email Verification (Brevo OTP)
+
+- **Screen:** `/register` → `/verify`.
+- **Action:** request a six-digit OTP; read the email; enter the code; confirm.
+- **Input:** email address, six-digit code.
+- **What the teacher should observe:** an actual OTP email is sent through the configured provider; invalid code rejected; expired code rejected; resend supported.
+- **What proves it works:** OTP delivered to a real inbox, verified, and the account becomes usable.
+- **Two-session / device test:** not required.
+
+## Feature 4 — Phone Verification (SMS OTP)
+
+- **Screen:** not currently enabled in the app UI for phone sign-up.
+- **Action:** not applicable.
+- **Input:** none.
+- **What the teacher should observe:** n/a.
+- **What proves it works:** n/a.
+- **Status:** **BLOCKED** — SMS provider is not configured; phone verification cannot be demonstrated end to end in this environment.
+
+## Feature 5 — Cloud Storage Image Upload
+
+- **Screen:** profile edit (`/app/profile` photo manager).
+- **Action:** upload a profile picture; confirm display; optionally replace/remove.
+- **Input:** supported image type, within size limit.
+- **What the teacher should observe:** upload goes to Supabase Storage; metadata/profile path updated; image displays; persists after restart and re-login.
+- **What proves it works:** Storage object exists, DB reference correct, signed/visible URL works, persistence across restart.
+- **Two-session / device test:** not required (single-user persistence).
+
+## Feature 6 — Real-Time Commenting
+
+- **Screen:** profile view with comment thread.
+- **Action:** post a comment; observe it appear; post from a second session and observe live arrival without refresh.
+- **Input:** comment body (max length enforced).
+- **What the teacher should observe:** optimistic append from POST response + live `comment:new` push with id-based dedupe; persistence after refresh; pagination (5 per page).
+- **What proves it works:** comment persisted in DB, appears in the other session via realtime without refresh, survives refresh, no duplicates.
+- **Two-session / device test:** **required** — Session A and Session B on the same profile; post in A; confirm B updates live.
+
+## Feature 7 — Like / Dislike with Live Count
+
+- **Screen:** profile reactions (like / dislike / favourite).
+- **Action:** like or dislike; watch live count; switch reaction.
+- **Input:** reaction value.
+- **What the teacher should observe:** count changes live via realtime (`like:new`); persisted in DB; accurate after refresh; one reaction per user.
+- **What proves it works:** two independent sessions see live count updates; refresh keeps correct counts.
+- **Two-session / device test:** **required** — Session A reacts; Session B sees live count change without refresh.
+
+---
+
+## Troubleshooting quick reference (teacher demo)
+
+- No realtime update: check SocketContext connection, `comment:new` / `like:new` subscriptions, enabled flags.
+- OTP not arriving: check provider delivery state, resend, rate limits; do not fake delivery.
+- Upload failure: check MIME/size validation and Storage policies.
+- Username taken: expected DB behavior; reserved names blocked.
+
+---
+
+## Timing plan
+
+| Step | Duration |
+|---|---|
+| Session | 1 min |
+| Username | 2 min |
+| Email OTP | 2 min |
+| Upload | 1 min |
+| Comments (2 sessions) | 2 min |
+| Reactions (2 sessions) | 2 min |
+| Buffer / explanation | 2 min |
+| **Total** | **≈10 min** |
