@@ -2,8 +2,8 @@
 
 **Project:** JibonJori — AI-assisted matrimony platform
 **Supabase project:** `jjbihxtthpclalruepul`
-**Final APK:** `D:/Zeem/JibonJori-Evaluation.apk`
-**Report date:** 2026-11-03
+**Final APK:** `D:/Zeem/JibonJori-Teacher-Ready.apk`
+**Report date:** 2026-11-10 (latest batch)
 
 ---
 
@@ -102,3 +102,27 @@
 - Evaluation APK built and scanned: **PASS** (rebuilt after phone implementation; scan CLEAN; delivered as `D:/Zeem/JibonJori-Evaluation.apk`).
 - Teacher demo guide ready: **YES** (`docs/TEACHER_EVALUATION_DEMO_GUIDE.md`).
 - Final readiness report: **YES** (this document).
+
+---
+
+## 13. Latest batch — teacher evaluation features (2026-11-10)
+
+Implemented in the latest teacher-feature batch and verified in this pass:
+
+| Feature | Implementation | Automated tests | Live verification |
+|---|---|---|---|
+| Datepicker | Native accessible calendar + DOB/18+ validation | **PASS** (validation suites green) | **NOT RUN** (device) |
+| Tailwind/Sass styling | Tailwind design tokens | **PASS** (full verify chain) | **NOT RUN** |
+| Star rating / feedback | `public.feedback` migration `20261110000017_feedback.sql` + `feedbackApi` / `FeedbackPage` / `RatingStars` | **PASS** (new feedback suites + DB assertions) | **NOT RUN** |
+| Embedded video | Curated YouTube + click-to-load nocookie embed | **PASS** (component suites) | **NOT RUN** (device) |
+| Maps | Google Maps JS API key-gated + geolocation/manual fallback | **PASS** (maps/geolocation suites) | **BLOCKED** (Maps key) |
+| Animations | GSAP + reduced-motion | **PASS** (animation suites) | **NOT RUN** |
+| GraphQL | `pg_graphql` via `lib/graphql.ts` + teacher lab page | **PASS** (teacher lab + transport suites) | **BLOCKED** (live endpoint) |
+
+Full verification this pass: `npm run verify` → **exit 0** (typecheck, lint, build, **191/191 tests**,
+deploy **16/16**, release-gate **21/21**, APK scan **CLEAN**).
+
+Fresh teacher-ready APK: `D:/Zeem/JibonJori-Teacher-Ready.apk` — **7,606,256 bytes**, SHA-256
+**`363721CFAD9B9F01355284D593D967C321744E9BE2F9962EE6CD5601FEF34FDF`**, package `com.jibonjori.app`,
+debug variant, forbidden-content scan **CLEAN**. Physical-device acceptance: **NOT RUN**.
+

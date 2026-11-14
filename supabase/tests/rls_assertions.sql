@@ -46,6 +46,7 @@ select t.denied_or_empty('anon cannot read any media row', 'select count(*) from
 select t.denied_or_empty('anon cannot read any notification', 'select count(*) from public.notifications');
 select t.denied_or_empty('anon cannot read any preference row', 'select count(*) from public.partner_preferences');
 select t.denied_or_empty('anon cannot read the ML artifact', 'select count(*) from public.ml_artifacts');
+select t.denied_or_empty('anon cannot read any app feedback', 'select count(*) from public.feedback');
 
 -- storage.objects is granted to anon in the harness, so the denial here is the
 -- policy, not a missing privilege: there is no policy for anon at all.
@@ -288,6 +289,53 @@ begin
   perform t.eq('alice cannot change bob''s rating', n, 0);
 end;
 $$;
+
+-- --- app feedback is owner-only and bounded (teacher evaluation feature)
+do $$
+declare n integer;
+begin
+  insert into public.feedback (rater_profile_id, score, feedback)
+  values ('11111111-1111-1111-1111-111111111111', 5, 'Loved the onboarding flow.');
+  get diagnostics n = row_count;
+  perform t.eq('alice can submit her own feedback', n, 1);
+
+  -- one active rating per member: the second submission replaces the first
+  insert into public.feedback (rater_profile_id, score, feedback)
+  values ('11111111-1111-1111-1111-111111111111', 2, 'Second rating replaces the first.')
+  on conflict (rater_profile_id) do update
+    set score = excluded.score, feedback = excluded.feedback, updated_at = now();
+  get diagnostics n = row_count;
+  perform t.eq('a member can replace their own rating', n, 1);
+
+  insert into public.feedback (rater_profile_id, score, feedback)
+  values ('11111111-1111-1111-1111-111111111111', 2, '')
+  on conflict (rater_profile_id) do update
+    set score = excluded.score, feedback = excluded.feedback, updated_at = now();
+  get diagnostics n = row_count;
+  perform t.eq('an empty feedback comment is accepted', n, 1);
+
+  select count(*) into n from public.feedback where rater_profile_id = '22222222-2222-2222-2222-222222222222';
+  perform t.eq('alice cannot read bob''s feedback', n, 0);
+
+  update public.feedback set score = 4 where rater_profile_id = '22222222-2222-2222-2222-222222222222';
+  get diagnostics n = row_count;
+  perform t.eq('alice cannot change bob''s feedback', n, 0);
+
+  delete from public.feedback where rater_profile_id = '22222222-2222-2222-2222-222222222222';
+  get diagnostics n = row_count;
+  perform t.eq('alice cannot delete bob''s feedback', n, 0);
+end;
+$$;
+
+select t.raises('alice cannot submit feedback as bob',
+  'insert into public.feedback (rater_profile_id, score) values (''22222222-2222-2222-2222-222222222222'', 3)');
+
+select t.raises('cannot store an out-of-range app feedback score',
+  'insert into public.feedback (rater_profile_id, score) values (''11111111-1111-1111-1111-111111111111'', 9)');
+
+-- eve is signed up but never verified: an unverified member cannot submit feedback.
+select t.raises('unverified member cannot submit app feedback',
+  'insert into public.feedback (rater_profile_id, score) values (''99999999-9999-9999-9999-999999999999'', 4)');
 
 -- --- compatibility: readable for own pairs, writable only through the scorer
 do $$
@@ -566,6 +614,10 @@ begin
     not exists (select 1 from pg_publication_tables
                  where pubname = 'supabase_realtime' and tablename = 'profiles'), null);
 
+  perform t.ok('realtime does not publish private app feedback',
+    not exists (select 1 from pg_publication_tables
+                 where pubname = 'supabase_realtime' and tablename = 'feedback'), null);
+
   perform t.ok('interactions keeps full rows for realtime updates',
     (select relreplident from pg_class where oid = 'public.interactions'::regclass) = 'f', null);
 end;
@@ -588,6 +640,9 @@ select t.raises('cannot interact with oneself',
 
 select t.raises('cannot rate outside 1..5',
   'insert into public.ratings (rater_profile_id, rated_profile_id, score) values (''11111111-1111-1111-1111-111111111111'', ''33333333-3333-3333-3333-333333333333'', 9)');
+
+select t.raises('cannot submit app feedback outside 1..5',
+  'insert into public.feedback (rater_profile_id, score) values (''11111111-1111-1111-1111-111111111111'', 9)');
 
 select t.raises('cannot use a malformed username',
   'insert into public.profiles (id, username) values (''88888888-8888-8888-8888-888888888888'', ''Bad Handle!'')');

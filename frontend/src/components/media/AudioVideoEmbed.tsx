@@ -34,6 +34,7 @@ export function AudioVideoEmbed({ video, height = 340 }: { video: VideoEntry; he
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             referrerPolicy="strict-origin-when-cross-origin"
             allowFullScreen
+            {...({ playsInline: true } as React.IframeHTMLAttributes<HTMLIFrameElement>)}
           />
         ) : (
           <button

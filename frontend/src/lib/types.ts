@@ -53,6 +53,19 @@ export type OtpChallenge = {
 
 export type RegisterResult = { user: User | null } & OtpChallenge;
 
+/**
+ * App-experience feedback: one 1..5 star score plus optional free text from an
+ * authenticated member. Kept separate from the match `ratings` table on purpose.
+ */
+export type Feedback = {
+  id: string;
+  raterProfileId: string;
+  score: number;
+  feedback: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type SessionInfo = {
   id: string;
   createdAt: string;

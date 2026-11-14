@@ -34,6 +34,8 @@ const SECONDARY_NAV: NavItem[] = [
   { to: "/app/notifications", label: "Notifications", icon: "bell" },
   { to: "/app/preferences", label: "Partner preferences", icon: "sliders" },
   { to: "/app/sessions", label: "Sessions and security", icon: "shield" },
+  { to: "/app/developer/graphql", label: "Developer · GraphQL", icon: "code" },
+  { to: "/app/feedback", label: "Rate the app", icon: "star" },
   { to: "/app/reports", label: "Reports", icon: "chart", adminOnly: true },
   { to: "/app/about", label: "About", icon: "info" },
 ];

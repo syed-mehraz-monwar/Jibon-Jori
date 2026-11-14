@@ -3,9 +3,10 @@
 **Project:** JibonJori — AI-assisted matrimony platform
 **Supabase project:** `jjbihxtthpclalruepul` — `https://jjbihxtthpclalruepul.supabase.co`
 **Android package:** `com.jibonjori.app`
-**Report date:** 2026-11-03
+**Teacher-ready APK:** `D:/Zeem/JibonJori-Teacher-Ready.apk`
+**Report date:** 2026-11-03 (original sequence) · **2026-11-10** (latest batch additions)
 
-This guide is for the teacher demonstration of the six evaluated features.
+This guide is for the teacher demonstration of the evaluated features.
 
 ---
 
@@ -18,6 +19,11 @@ This guide is for the teacher demonstration of the six evaluated features.
 5. **Cloud upload** — upload / replace a profile picture. (1 min)
 6. **Real-time commenting** — open two sessions on the same profile and post from one. (2 min)
 7. **Like / dislike live count** — like from one session, watch the other. (1 min)
+8. **Datepicker** — profile editor → pick a date of birth at least 18 years old. (1 min)
+9. **App-experience star rating** — open **Rate the app**, submit / update / delete a 1–5 rating. (1 min)
+10. **Embedded video** — open **About** → play a curated video. (1 min)
+11. **Maps** — open profile location controls and try consent / manual / geolocation. (1 min)
+12. **GraphQL teacher lab** — open **Developer · GraphQL**, run the live query and the failing query. (1 min)
 
 ---
 
@@ -93,14 +99,61 @@ This guide is for the teacher demonstration of the six evaluated features.
 - **What proves it works:** two independent sessions see live count updates; refresh keeps correct counts.
 - **Two-session / device test:** **required** — Session A reacts; Session B sees live count change without refresh.
 
+## Feature 8 — Datepicker (new in the latest batch)
+
+- **Screen:** `/app/profile` → profile editor → **Date of birth** (native accessible calendar).
+- **Action:** open the calendar, navigate, pick a date at least 18 years old, submit.
+- **Input:** birth date (`yyyy-mm-dd`, bounded by `DOB_EARLIEST` … `latestAdultDob()`, validated by `dobError`).
+- **What the teacher should observe:** month/year navigation works; under-18 / invalid / future dates are rejected; public views show the age only.
+- **What proves it works:** validation suites green (`validation.test.ts`); backend re-validates the 18+ rule.
+- **Tech:** native `<input type="date">` (no new dependency); accessible calendar popup on Android WebView.
+
+## Feature 9 — Private App Star Rating (new in the latest batch)
+
+- **Screen:** `/app/feedback` (**Rate the app**).
+- **Action:** pick 1–5 stars, optional text, submit / update / delete.
+- **Input:** integer score 1–5, optional ≤2000-char text; backend enforces one active rating per member and owner-only access.
+- **What the teacher should observe:** own rating round-trips; other members cannot read it; invalid scores are rejected.
+- **What proves it works:** new feedback suites + DB assertions green.
+- **Tech:** `public.feedback` migration `20261110000017_feedback.sql`, `feedbackApi`, `RatingStars`.
+
+## Feature 10 — Embedded Video (new in the latest batch)
+
+- **Screen:** `/app/about` → **Watch and learn**.
+- **Action:** press play; confirm click-to-load `youtube-nocookie.com` embed.
+- **What the teacher should observe:** no third-party frame before play; user-initiated playback; curated catalogue only.
+- **Tech:** `AudioVideoEmbed` + curated videos API.
+
+## Feature 11 — Maps (new in the latest batch)
+
+- **Screen:** `/app/profile` → location controls (`LocationPicker` / `LocationMap`).
+- **Action:** consent → current location (or manual coordinates).
+- **What the teacher should observe:** geolocation permission prompt, fallback to manual entry, approximate coordinates only.
+- **Tech:** Google Maps JS API (key-gated) + Capacitor Geolocation / browser fallback.
+
+## Feature 12 — GraphQL Teacher Lab (new in the latest batch)
+
+- **Screen:** `/app/developer/graphql` (**Developer · GraphQL**).
+- **Action:** run the live `ReferenceData` query; run the failing query to show the error state.
+- **What the teacher should observe:** real POST to Supabase `/graphql/v1` with the member token; returned rows; error branch.
+- **Tech:** `pg_graphql` via `lib/graphql.ts` + teacher lab page; live execution pending cloud verification.
+
+## Feature 13 — Animations (new in the latest batch)
+
+- **Screen:** application-wide (likes, ratings, modals, toasts, reveals).
+- **Action:** trigger an animated interaction; check reduced-motion preference.
+- **Tech:** GSAP + ScrollTrigger, `prefers-reduced-motion`.
+
 ---
 
 ## Troubleshooting quick reference (teacher demo)
 
-- No realtime update: check SocketContext connection, `comment:new` / `like:new` subscriptions, enabled flags.
+- No realtime update: check SocketContext connection, `comment:new` / `like:new` / `rating:new` subscriptions, enabled flags.
 - OTP not arriving: check provider delivery state, resend, rate limits; do not fake delivery.
 - Upload failure: check MIME/size validation and Storage policies.
 - Username taken: expected DB behavior; reserved names blocked.
+- Feedback rejected: check score range (1–5) and member verification state on the backend.
+- Map not configured: set `VITE_GOOGLE_MAPS_API_KEY`; without it the picker falls back to manual coordinates.
 
 ---
 
@@ -115,5 +168,11 @@ This guide is for the teacher demonstration of the six evaluated features.
 | Upload | 1 min |
 | Comments (2 sessions) | 2 min |
 | Reactions (2 sessions) | 2 min |
+| Datepicker | 1 min |
+| Star feedback | 1 min |
+| Video | 1 min |
+| Maps | 1 min |
+| GraphQL | 1 min |
+| Animations | 0.5 min |
 | Buffer / explanation | 2 min |
-| **Total** | **≈11 min** |
+| **Total** | **≈20 min** |

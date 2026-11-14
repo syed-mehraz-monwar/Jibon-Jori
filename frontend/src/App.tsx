@@ -24,6 +24,9 @@ const ChatPage = lazy(() => import("./pages/ChatPage").then((m) => ({ default: m
 const DashboardPage = lazy(() =>
   import("./pages/DashboardPage").then((m) => ({ default: m.DashboardPage }))
 );
+const FeedbackPage = lazy(() =>
+  import("./pages/FeedbackPage").then((m) => ({ default: m.FeedbackPage }))
+);
 const NotificationsPage = lazy(() =>
   import("./pages/NotificationsPage").then((m) => ({ default: m.NotificationsPage }))
 );
@@ -45,6 +48,9 @@ const ReportsPage = lazy(() =>
 const SearchPage = lazy(() => import("./pages/SearchPage").then((m) => ({ default: m.SearchPage })));
 const SessionsPage = lazy(() =>
   import("./pages/SessionsPage").then((m) => ({ default: m.SessionsPage }))
+);
+const TeacherGraphQLLabPage = lazy(() =>
+  import("./pages/TeacherGraphQLLabPage").then((m) => ({ default: m.TeacherGraphQLLabPage }))
 );
 
 /**
@@ -84,6 +90,8 @@ export function App() {
             <Route path="chat" element={<ChatPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="about" element={<AboutPage />} />
+            <Route path="feedback" element={<FeedbackPage />} />
+            <Route path="developer/graphql" element={<TeacherGraphQLLabPage />} />
           </Route>
 
           <Route path="/app/*" element={<Navigate to="/app" replace />} />

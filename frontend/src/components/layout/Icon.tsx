@@ -29,7 +29,9 @@ export type IconName =
   | "eye"
   | "link"
   | "droplet"
-  | "moon";
+  | "moon"
+  | "star"
+  | "code";
 
 const PATHS: Record<IconName, string[]> = {
   home: ["M3 10.5 12 3l9 7.5", "M5.5 9.5V21h13V9.5", "M9.75 21v-6h4.5v6"],
@@ -63,6 +65,10 @@ const PATHS: Record<IconName, string[]> = {
   link: ["M10 13.5a3.5 3.5 0 0 0 5 0l2.5-2.5a3.5 3.5 0 0 0-5-5L11 7.5", "M14 10.5a3.5 3.5 0 0 0-5 0L6.5 13a3.5 3.5 0 0 0 5 5L13 16.5"],
   droplet: ["M12 3.5c3 3.6 5.5 6.4 5.5 9.4a5.5 5.5 0 0 1-11 0c0-3 2.5-5.8 5.5-9.4Z"],
   moon: ["M20 14.5A8.2 8.2 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"],
+  star: [
+    "M12 4.5l2.55 5.06 5.58.82-4.06 3.96.96 5.52-4.98-2.6-4.98 2.6.96-5.52L3.87 10.38l5.58-.82L12 4.5Z",
+  ],
+  code: ["M8 7 5 12l3 5", "M16 7l3 5-3 5"],
 };
 
 export function Icon({
