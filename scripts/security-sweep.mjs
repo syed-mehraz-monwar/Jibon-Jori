@@ -139,6 +139,14 @@ const ALLOW = new Map(
     ["supabase/functions/tests/http_test.ts::origin.cleartext", { count: 1, reason: "synthetic CORS fixture: the Capacitor http://localhost origin" }],
     ["supabase/functions/tests/http_test.ts::secret.pg_uri", { count: 1, reason: "synthetic URI used to prove the 500 handler does not leak the message" }],
 
+    // --- Generated Android bundles: Vite inlines inert local-development defaults from
+    // --- the bundled @supabase realtime/auth-js libraries (e.g. a local WebSocket host).
+    // --- The production build always inlines the hosted Supabase URL over TLS, so those
+    // --- defaults never take effect in the shipped app. The allowlist records the exact
+    // --- occurrence count so the exemption cannot silently widen.
+    ["frontend/android/app/src/main/assets/public/assets/index-BDDR_15d.js::origin.loopback_lan", { count: 4, reason: "inert @supabase realtime/auth-js local-dev host defaults inlined by Vite; the shipped build uses the hosted Supabase URL" }],
+    ["frontend/android/app/src/main/assets/public/assets/index-BDDR_15d.js::origin.cleartext", { count: 1, reason: "inert @supabase realtime local WebSocket default (http://localhost:9999) inlined by Vite; the shipped build uses the hosted Supabase URL over TLS" }],
+
     // --- Prose: placeholders and the synthetic fixture are named, never valued ---
     ["docs/FINAL_SUPABASE_PHONE_VERIFICATION_REPORT.md::secret.hardcoded_env", { count: 1, reason: "placeholder <service_role key> in setup instructions" }],
     ["docs/FINAL_SUPABASE_PHONE_VERIFICATION_REPORT.md::secret.sb_secret", { count: 1, reason: "names the synthetic fixture, which is not a credential" }],
