@@ -51,7 +51,9 @@ export function RegisterPage() {
 
     const localErrors = [
       usernameError(username),
-      passwordError(password),
+      // A phone-channel registration is passwordless (Supabase SMS OTP creates the
+      // account); only the email channel requires a password.
+      ...(channel === "email" ? [passwordError(password)] : []),
       channel === "email" ? emailError(email) : phoneError(phone),
     ].filter((message): message is string => message !== null);
 
@@ -149,11 +151,11 @@ export function RegisterPage() {
         ) : null}
 
         <Field
-          label="Password"
+          label={channel === "email" ? "Password" : "Password"}
           htmlFor="password"
-          required
-          hint="At least 8 characters."
-          error={password ? passwordError(password) : null}
+          required={channel === "email"}
+          hint={channel === "email" ? "At least 8 characters." : "Not needed for the phone (SMS) channel."}
+          error={channel === "email" && password ? passwordError(password) : null}
         >
           <PasswordInput
             id="password"

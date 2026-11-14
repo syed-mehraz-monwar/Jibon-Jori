@@ -2,7 +2,7 @@ import { getSupabase, callRpc, invokeFunction, toApiError } from "../lib/supabas
 import { ApiError } from "../lib/http";
 import { isNativeApp } from "../lib/platform";
 import { deriveUserStatus } from "../lib/mappers";
-import { normalizePhoneNumber, phoneError } from "../lib/validation";
+import { normalizePhoneNumber, phoneError, otpCodeError } from "../lib/validation";
 import type { LoginResult, OtpChallenge, RegisterResult, Role, SessionInfo, User } from "../lib/types";
 
 export type RegisterInput = {
@@ -394,11 +394,40 @@ export const authApi = {
 
   verifyOtp: async (input: {
     userId: string;
-    purpose: "register";
+    purpose: "register" | "phone_change";
     code: string;
     channel?: "email" | "phone";
     phone?: string;
   }): Promise<LoginResult> => {
+    const codeProblem = otpCodeError(input.code);
+    if (codeProblem) {
+      throw new ApiError(400, "VALIDATION_ERROR", codeProblem);
+    }
+
+    // A phone *change* (profile editing) is verified with the SMS OTP type against the
+    // NEW normalized number; the authoritative verified state lives on the Supabase auth
+    // user (`phone_confirmed_at`), which a client can never set directly. The previous
+    // number keeps its own confirmation until this verification succeeds.
+    if (input.purpose === "phone_change") {
+      const phone = input.phone?.trim() || readPendingPhone();
+      if (!phone) {
+        throw new ApiError(400, "VALIDATION_ERROR", "Enter the new phone number you are changing to, then the code.");
+      }
+      const normalized = normalizePhoneNumber(phone);
+      if (!normalized) {
+        throw new ApiError(400, "VALIDATION_ERROR", phoneError(phone) ?? "Enter a valid Bangladesh mobile number, for example +8801712345678.");
+      }
+      const { data, error } = await getSupabase().auth.verifyOtp({ phone: normalized, token: input.code.trim(), type: "phone_change" });
+      if (error || !data.user || !data.session) {
+        throw new ApiError(400, "INVALID_OTP", "That code is not valid or has expired.");
+      }
+      const user = await loadUser(data.user as SupaUser);
+      if (!user.phoneVerifiedAt) {
+        throw new ApiError(400, "PHONE_NOT_CONFIRMED", "Your phone number is not verified yet. Enter the 6-digit code we sent you, then sign in.");
+      }
+      return { accessToken: data.session.access_token, refreshToken: data.session.refresh_token, user };
+    }
+
     // Phone challenges are verified with the SMS OTP type against the normalized
     // phone number; the authoritative verified state lives on the Supabase auth
     // user (`phone_confirmed_at`), which a client can never set directly.
@@ -425,6 +454,72 @@ export const authApi = {
     }
     const user = await loadUser(data.user as SupaUser);
     return { accessToken: data.session.access_token, refreshToken: data.session.refresh_token, user };
+  },
+
+  /**
+   * Starts a phone-number change for the signed-in user.
+   *
+   * Supabase Auth owns the phone-change OTP lifecycle: `updateUser({ phone })` asks
+   * the auth layer to send an SMS OTP to the NEW normalized number, and the change is
+   * only applied once that OTP is verified through the `phone_change` verification
+   * type. The previous number therefore stays verified until the new one is confirmed.
+   *
+   * Input is normalized and validated before the provider call: an invalid number is
+   * rejected locally instead of reaching the SMS provider.
+   */
+  requestPhoneChangeOtp: async (phone: string): Promise<OtpChallenge> => {
+    const normalized = normalizePhoneNumber(phone);
+    if (!normalized) {
+      throw new ApiError(400, "VALIDATION_ERROR", phoneError(phone) ?? "Enter a valid Bangladesh mobile number, for example +8801712345678.");
+    }
+    const { error } = await getSupabase().auth.updateUser({ phone: normalized });
+    const delivered = !error;
+    const deliveryReason = error ? (isProviderConfigurationError(error) ? "NO_PROVIDER" : "DELIVERY_FAILED") : null;
+    return {
+      channel: "phone",
+      deliveredTo: maskPhone(normalized),
+      expiresInSeconds: OTP_TTL_SECONDS,
+      delivered,
+      deliveryProvider: delivered ? "supabase-auth" : null,
+      deliveryReason,
+    };
+  },
+
+  /**
+   * Resends the SMS OTP for an in-progress phone change (`type: "phone_change"`).
+   * The Supabase auth layer enforces its own send rate limit; the client mirrors the
+   * 30-second cooldown used for registration challenges.
+   */
+  resendPhoneChangeOtp: async (phone: string): Promise<OtpChallenge> => {
+    const normalized = normalizePhoneNumber(phone);
+    if (!normalized) {
+      throw new ApiError(400, "VALIDATION_ERROR", phoneError(phone) ?? "Enter a valid Bangladesh mobile number, for example +8801712345678.");
+    }
+    const { error } = await getSupabase().auth.resend({ phone: normalized, type: "phone_change" });
+    const delivered = !error;
+    const deliveryReason = error ? (isProviderConfigurationError(error) ? "NO_PROVIDER" : "DELIVERY_FAILED") : null;
+    return {
+      channel: "phone",
+      deliveredTo: maskPhone(normalized),
+      expiresInSeconds: OTP_TTL_SECONDS,
+      delivered,
+      deliveryProvider: delivered ? "supabase-auth" : null,
+      deliveryReason,
+    };
+  },
+
+  /** Verifies a phone-change OTP (`type: "phone_change"`) against the normalized number. */
+  verifyPhoneChangeOtp: async (input: { phone: string; code: string; userId: string }): Promise<LoginResult> => {
+    const normalized = normalizePhoneNumber(input.phone);
+    if (!normalized) {
+      throw new ApiError(400, "VALIDATION_ERROR", phoneError(input.phone) ?? "Enter a valid Bangladesh mobile number, for example +8801712345678.");
+    }
+    return authApi.verifyOtp({
+      userId: input.userId,
+      purpose: "phone_change",
+      code: input.code,
+      phone: normalized,
+    });
   },
 
   login: async (input: LoginInput): Promise<LoginResult> => {

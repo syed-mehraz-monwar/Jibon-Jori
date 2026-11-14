@@ -32,8 +32,10 @@ export function LoginPage() {
     event.preventDefault();
     setError(null);
 
-    if (identifier.trim().length < 3) {
-      setError("Enter your email address.");
+    const trimmedIdentifier = identifier.trim();
+    const isPhoneLike = /^\+?[0-9][0-9\s]{5,13}$/.test(trimmedIdentifier);
+    if (trimmedIdentifier.length < 3 || (!trimmedIdentifier.includes("@") && !isPhoneLike)) {
+      setError("Enter your email address or phone number.");
       return;
     }
     if (!password) {
@@ -69,15 +71,16 @@ export function LoginPage() {
       }
     >
       <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
-        <Field label="Email address" htmlFor="identifier" required>
+        <Field label="Email address or phone number" htmlFor="identifier" required>
           <Input
             id="identifier"
             name="identifier"
+            type="text"
             autoComplete="email"
-            inputMode="email"
+            inputMode="tel"
             value={identifier}
             onChange={(event) => setIdentifier(event.target.value)}
-            placeholder="you@example.com"
+            placeholder="you@example.com or +8801712345678"
           />
         </Field>
 

@@ -21,7 +21,7 @@ type AuthContextValue = {
   isAdmin: boolean;
   login: (identifier: string, password: string) => Promise<User>;
   register: (input: RegisterInput) => Promise<RegisterResult>;
-  verifyOtp: (userId: string, code: string, options?: { channel?: "email" | "phone"; phone?: string }) => Promise<User>;
+  verifyOtp: (userId: string, code: string, options?: { purpose?: "register" | "phone_change"; channel?: "email" | "phone"; phone?: string }) => Promise<User>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 };
@@ -106,10 +106,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       verifyOtp: async (userId, code, options) => {
         const user = await authApi.verifyOtp({
           userId,
-          purpose: "register",
+          purpose: options?.purpose ?? "register",
           code,
           ...(options?.channel === "phone" ? { phone: options?.phone ?? "" } : {}),
         });
+        // Both the registration and the phone-change OTP flows complete by applying the
+        // session Supabase returned, so React state (and the fresh verified user) move
+        // together with the auth layer.
         return applySession(user);
       },
       logout: async () => {

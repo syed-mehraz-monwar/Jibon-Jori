@@ -4,6 +4,7 @@ import { useAsync } from "../hooks/useAsync";
 import { ApiError } from "../lib/http";
 import { PageHeader } from "../components/layout/PageHeader";
 import { MediaManager } from "../components/profile/MediaManager";
+import { ProfilePhoneCard } from "../components/profile/ProfilePhoneCard";
 import { ProfileForm } from "../components/profile/ProfileForm";
 import { ProfilePhotoCard } from "../components/profile/ProfilePhotoCard";
 import { LocationMap } from "../components/map/LocationMap";
@@ -40,6 +41,7 @@ export function ProfilePage() {
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="lg:col-span-2">
+          <ProfilePhoneCard />
           <ProfileForm profile={current} onSaved={profile.reload} />
         </div>
 

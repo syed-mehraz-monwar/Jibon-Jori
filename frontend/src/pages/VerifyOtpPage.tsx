@@ -17,6 +17,7 @@ export function VerifyOtpPage() {
   const toast = useToast();
 
   const [userId, setUserId] = useState("");
+  const [purpose, setPurpose] = useState<"register" | "phone_change">("register");
   const [channel, setChannel] = useState<"email" | "phone">("email");
   const [phone, setPhone] = useState("");
   const [delivered, setDelivered] = useState<boolean | null>(null);
@@ -33,9 +34,11 @@ export function VerifyOtpPage() {
   // Registration writes the pending user id / channel / phone here, so a refresh
   // on this page still knows which account the code belongs to, plus whether a
   // code was actually delivered (R-012) so the copy below does not assert one is
-  // coming.
+  // coming. A phone *change* (profile editing) writes the same keys for the signed-in
+  // user and the NEW number it is verifying.
   useEffect(() => {
     setUserId(sessionStorage.getItem("jibonjori.pendingUserId") ?? "");
+    setPurpose((sessionStorage.getItem("jibonjori.pendingPurpose") ?? "register") as "register" | "phone_change");
     setChannel((sessionStorage.getItem("jibonjori.pendingChannel") ?? "email") as "email" | "phone");
     setPhone(readPendingPhone() ?? "");
     const stored = sessionStorage.getItem("jibonjori.pendingDelivered");
@@ -57,7 +60,11 @@ export function VerifyOtpPage() {
     return () => window.clearInterval(intervalId);
   }, [resendAt]);
 
-  if (status === "authenticated") {
+  // A registration challenge only applies while the visitor is anonymous; a phone
+  // *change* (profile editing) applies to a signed-in member and must NOT be
+  // abandoned by this redirect, or the freshly verified new number could never be
+  // applied.
+  if (status === "authenticated" && purpose !== "phone_change") {
     return <Navigate to="/app" replace />;
   }
 
@@ -72,8 +79,9 @@ export function VerifyOtpPage() {
       return;
     }
     // Phone challenges are keyed by the phone number, not a pre-existing user id:
-    // the OTP send creates the account, so an empty user id is expected there.
-    if (!userId && channel !== "phone") {
+    // the OTP send creates the account, so an empty user id is expected there. A phone
+    // *change* is always tied to the signed-in user, so its user id is present.
+    if (purpose === "register" && !userId && channel !== "phone") {
       setError("We lost track of your registration. Please register again.");
       return;
     }
@@ -81,6 +89,7 @@ export function VerifyOtpPage() {
     setSubmitting(true);
     try {
       const user = await verifyOtp(userId, code.trim(), {
+        purpose,
         channel: channel === "phone" ? "phone" : "email",
         ...(channel === "phone" ? { phone } : {}),
       });
@@ -88,6 +97,7 @@ export function VerifyOtpPage() {
       setCooldownSeconds(0);
       sessionStorage.removeItem("jibonjori.pendingUserId");
       sessionStorage.removeItem("jibonjori.pendingChannel");
+      sessionStorage.removeItem("jibonjori.pendingPurpose");
       sessionStorage.removeItem("jibonjori.pendingDelivered");
       sessionStorage.removeItem("jibonjori.pendingDeliveryReason");
       sessionStorage.removeItem("jibonjori.pendingDeliveredTo");
@@ -102,14 +112,17 @@ export function VerifyOtpPage() {
   }
 
   async function onResend() {
-    if (!userId && channel !== "phone") {
+    if (purpose === "register" && !userId && channel !== "phone") {
       setError("We lost track of your registration. Please register again.");
       return;
     }
     setError(null);
     setResending(true);
     try {
-      const result = await authApi.requestOtp({ userId, channel, phone });
+      const result =
+        purpose === "phone_change"
+          ? await authApi.resendPhoneChangeOtp(phone)
+          : await authApi.requestOtp({ userId, channel, phone });
       sessionStorage.setItem("jibonjori.pendingDelivered", String(result.delivered));
       sessionStorage.setItem("jibonjori.pendingDeliveryReason", result.deliveryReason ?? "");
       sessionStorage.setItem("jibonjori.pendingDeliveredTo", result.deliveredTo);
@@ -117,7 +130,6 @@ export function VerifyOtpPage() {
       setDeliveredTo(result.deliveredTo);
       setDeliveryReason(result.deliveryReason ?? "");
       setResendAt(Date.now());
-
       const copy = deliveryNotice(result, "resent");
       setNotice(copy.body);
       if (copy.tone === "success") toast.success(copy.title, copy.body);
@@ -207,7 +219,7 @@ export function VerifyOtpPage() {
       <button
         type="button"
         onClick={() => void onResend()}
-        disabled={resending || cooldownSeconds > 0 || !userId}
+        disabled={resending || cooldownSeconds > 0 || (purpose === "register" && channel === "email" && !userId)}
         className="mt-4 w-full rounded-lg py-2 text-sm font-medium text-brand-700 transition hover:underline disabled:opacity-50"
       >
         {resending
