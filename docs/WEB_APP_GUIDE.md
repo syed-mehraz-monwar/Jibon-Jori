@@ -56,6 +56,9 @@ Authenticated (`/app/*`, guarded by the app shell): `/app`, `/app/profile`,
 Teacher evaluation hub: `/app/developer`. GraphQL teacher lab: `/app/developer/graphql`.
 Demo mode: `/app/demo`.
 
+**Current production deployment:** `https://jibon-jori-a88n.vercel.app/` (Vercel). Production
+browser smoke suite passed 17/17 (see `docs/PRODUCTION_ACCEPTANCE_REPORT.md`).
+
 ## 4. Feature areas covered by the web app
 
 - Landing, registration, email OTP, phone OTP, login, password recovery,
@@ -90,6 +93,15 @@ Demo mode: `/app/demo`.
   validation batch (GET plan handler + response mapping, server-side admin
   resolution, demo-marker deletes); the function still needs deployment and a
   live reset run before it can be demonstrated.
+
+## 7. Production deployment status (2026-11-19)
+
+- Production URL: `https://jibon-jori-a88n.vercel.app/` — **deployed and serving**
+  (HTTP 200, final-source bundle).
+- Production browser smoke: **17/17 passed** against the production origin
+  (including Supabase reachability — resolved with HTTP 401, i.e. reachable).
+- Authenticated flows and live-backend feature acceptance: pending dedicated test
+  accounts and authorized Supabase/Vercel steps.
 
 See `docs/WEB_DEPLOYMENT_GUIDE.md`, `docs/TEACHER_WEB_DEMO_GUIDE.md`,
 `docs/WEB_APP_TEST_REPORT.md` and `docs/WEB_RELEASE_REPORT.md`.

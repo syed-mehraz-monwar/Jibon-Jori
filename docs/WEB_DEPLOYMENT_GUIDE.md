@@ -12,9 +12,11 @@ The production frontend is a pure static build (`frontend/dist`) produced by
 `npm run build` (TypeScript + Vite). There is no server runtime and no first-party
 API upstream.
 
-**Current status (2026-11-15):** deployment has not been performed yet — the Vercel
-account is not yet authorized (`vercel whoami` → logged out) and no production URL
-has been assigned. This guide must not be read as a completed deployment.
+**Current status (2026-11-19):** **DEPLOYED TO PRODUCTION** at
+`https://jibon-jori-a88n.vercel.app/` by the project owner; live audit smoke suite passed
+**17/17** against the production origin (see `docs/PRODUCTION_ACCEPTANCE_REPORT.md`).
+Authentication redirect settings for the production domain must still be completed in the
+Supabase dashboard if not already done.
 
 ## 2. Repository state
 

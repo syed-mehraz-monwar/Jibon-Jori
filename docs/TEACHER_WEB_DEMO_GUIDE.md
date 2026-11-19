@@ -88,6 +88,8 @@ Recorded against this release batch; do not present older numbers as current:
   on Chrome and Edge against the local Vite dev server; the one skipped/failing
   check is the live Supabase reachability probe, which could not be completed
   from the sandbox (egress-restricted).
+- Production browser smoke (2026-11-19, against `https://jibon-jori-a88n.vercel.app/`):
+  **17/17 passed**, including the Supabase reachability check (resolved with HTTP 401).
 - Demo reset transport and server-side admin logging were repaired during this
   batch; the automated demo API, demo mode and developer suites pass
   (`npm run verify`: **203/203 tests**, release gate **21/21**, deployment checks

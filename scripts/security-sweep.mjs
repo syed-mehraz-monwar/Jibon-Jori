@@ -144,8 +144,8 @@ const ALLOW = new Map(
     // --- The production build always inlines the hosted Supabase URL over TLS, so those
     // --- defaults never take effect in the shipped app. The allowlist records the exact
     // --- occurrence count so the exemption cannot silently widen.
-    ["frontend/android/app/src/main/assets/public/assets/index-BqKOLtEJ.js::origin.loopback_lan", { count: 4, reason: "inert @supabase realtime/auth-js local-dev host defaults inlined by Vite; the shipped build uses the hosted Supabase URL" }],
-    ["frontend/android/app/src/main/assets/public/assets/index-BqKOLtEJ.js::origin.cleartext", { count: 1, reason: "inert @supabase realtime local WebSocket default (http://localhost:9999) inlined by Vite; the shipped build uses the hosted Supabase URL over TLS" }],
+    ["frontend/android/app/src/main/assets/public/assets/index-IVShLNkN.js::origin.loopback_lan", { count: 4, reason: "inert @supabase realtime/auth-js local-dev host defaults inlined by Vite; the shipped build uses the hosted Supabase URL" }],
+    ["frontend/android/app/src/main/assets/public/assets/index-IVShLNkN.js::origin.cleartext", { count: 1, reason: "inert @supabase realtime local WebSocket default (http://localhost:9999) inlined by Vite; the shipped build uses the hosted Supabase URL over TLS" }],
 
     // --- Prose: placeholders and the synthetic fixture are named, never valued ---
     ["docs/FINAL_SUPABASE_PHONE_VERIFICATION_REPORT.md::secret.hardcoded_env", { count: 1, reason: "placeholder <service_role key> in setup instructions" }],

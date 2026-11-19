@@ -33,6 +33,22 @@ The full `npm run verify` gate therefore passes on the web application source.
 protocol (no new dependency) and runs route rendering, navigation, keyboard and
 computed-style checks.
 
+### 2.1 Production smoke (2026-11-19)
+
+Run against the deployed Vercel production URL:
+
+`node test-support/browser-smoke.mjs --base https://jibon-jori-a88n.vercel.app --supabase-url https://jjbihxtthpclalruepul.supabase.co`
+
+Result: **17/17 passed, 0 skipped**.
+
+- All public-route checks passed (landing, validation, registration, 404, protected
+  redirects, reduced motion, responsive reflow, subresources, console errors).
+- Supabase reachability check passed: `GET /rest/v1/` resolved with **401** (reachable,
+  auth required) — the earlier `TypeError: Failed to fetch` failure did not reproduce and
+  is now resolved.
+
+### 2.2 Local smoke (2026-11-15)
+
 Status: **run against the local Vite dev server** (this batch); results recorded
 below.
 

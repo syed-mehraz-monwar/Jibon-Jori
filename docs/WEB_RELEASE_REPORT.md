@@ -18,9 +18,9 @@ This report records the release state of the JibonJori web application as of
 
 | Item | Status |
 | --- | --- |
-| Production web URL | **Not yet assigned** — deployment pending provider authorization |
+| Production web URL | **Assigned** — `https://jibon-jori-a88n.vercel.app/` (deployed, live) |
 | Hosting provider | Vercel (selected) |
-| Source HEAD | `386ee7d05892832e05301e58005163e26bc643ea` (docs refresh on top of task batch `8841cd92015d0a24b547d6f71dcd4cf108b5ee94`) |
+| Source HEAD | `7ad2a0ac32f4e0d69550f6561f279e136664ae6d` (task batch `8841cd9` + docs/sweep follow-ups) |
 | Production build | PASS (`npm run build`) — bundle `dist/assets/index-CB8zvpYc.js` (601.86 kB / gzip 188.33 kB), sourcemaps off, no secret matches, inert `@supabase` library defaults only |
 | Full verification gate | **PASS** (`npm run verify`, exit 0) |
 | Tests | **203/203 passed (27 files)** |
