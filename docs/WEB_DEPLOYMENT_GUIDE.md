@@ -12,6 +12,10 @@ The production frontend is a pure static build (`frontend/dist`) produced by
 `npm run build` (TypeScript + Vite). There is no server runtime and no first-party
 API upstream.
 
+**Current status (2026-11-15):** deployment has not been performed yet — the Vercel
+account is not yet authorized (`vercel whoami` → logged out) and no production URL
+has been assigned. This guide must not be read as a completed deployment.
+
 ## 2. Repository state
 
 - The existing GitHub repository `syed-mehraz-monwar/Jibon-Jori` is used; the

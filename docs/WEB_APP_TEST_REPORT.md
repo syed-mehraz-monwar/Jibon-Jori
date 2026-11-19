@@ -1,7 +1,7 @@
 # JibonJori Web App Test Report
 
 This report records the automated verification performed on the JibonJori web
-application (the React + TypeScript + Vite client) as of 2026-11-14.
+application (the React + TypeScript + Vite client) as of 2026-11-15.
 
 ## 1. Commands and results
 
@@ -10,7 +10,7 @@ application (the React + TypeScript + Vite client) as of 2026-11-14.
 | `npm run typecheck` | PASS |
 | `npm run lint` | PASS |
 | `npm run build` | PASS |
-| `npm test` (unit + component) | **PASS — 201/201 tests (26 files)** |
+| `npm test` (unit + component) | **PASS — 203/203 tests (27 files)** |
 | `npm run test:deploy` | PASS — 16/16 |
 | `npm run test:release-gate` | PASS — 21/21 |
 | `npm run test:apk` | PASS — CLEAN |
@@ -24,6 +24,8 @@ The full `npm run verify` gate therefore passes on the web application source.
   links, live username availability, live session posture).
 - `src/__tests__/demo-mode.test.tsx` — 4 tests (redirect, checklist/personas,
   admin-only reset, armed/confirm reset flow).
+- `src/__tests__/demo-api.test.ts` — 2 tests (admin-gated GET plan handler with
+  `{ profiles }` response mapping, and confirm-only reset invocation).
 
 ## 2. Browser smoke
 

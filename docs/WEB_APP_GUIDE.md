@@ -86,6 +86,10 @@ Demo mode: `/app/demo`.
   hosted project before live feedback submission works.
 - Physical device behaviour is covered by the Android build; the browser build is
   verified in Chrome/Edge.
+- Demo Mode reset backend contract was repaired in source during the 2026-11-15
+  validation batch (GET plan handler + response mapping, server-side admin
+  resolution, demo-marker deletes); the function still needs deployment and a
+  live reset run before it can be demonstrated.
 
 See `docs/WEB_DEPLOYMENT_GUIDE.md`, `docs/TEACHER_WEB_DEMO_GUIDE.md`,
 `docs/WEB_APP_TEST_REPORT.md` and `docs/WEB_RELEASE_REPORT.md`.

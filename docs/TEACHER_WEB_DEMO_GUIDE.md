@@ -79,3 +79,19 @@ Never present a mocked test as a live verification.
 | Animations | 1 |
 | GraphQL | 2 |
 | Total | ~24 |
+
+## 6. Current validation status (2026-11-15)
+
+Recorded against this release batch; do not present older numbers as current:
+
+- Browser smoke (`frontend/test-support/browser-smoke.mjs`): **16/17 checks passed**
+  on Chrome and Edge against the local Vite dev server; the one skipped/failing
+  check is the live Supabase reachability probe, which could not be completed
+  from the sandbox (egress-restricted).
+- Demo reset transport and server-side admin logging were repaired during this
+  batch; the automated demo API, demo mode and developer suites pass
+  (`npm run verify`: **203/203 tests**, release gate **21/21**, deployment checks
+  **16/16**, security sweep **PASS**, production build **PASS**).
+- Android debug APK rebuilt successfully (`frontend/android/app/build/outputs/apk/debug/app-debug.apk`,
+  **7,606,439 bytes**) and delivered as a new artifact at `D:\Zeem\JibonJori-Web-v1.apk`.
+- Production web URL: **not yet assigned** (Vercel authorization pending).
