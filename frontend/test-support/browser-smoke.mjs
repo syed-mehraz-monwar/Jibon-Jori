@@ -304,9 +304,29 @@ async function main() {
       const apiCalls = await socket.evaluate(
         "return performance.getEntriesByType('resource').filter((e) => e.name.includes('/auth/v1/')).length;"
       );
-      if (!/Enter your username/.test(alert)) throw new Error(`unexpected alert: ${alert}`);
+      if (!/Enter your email address or phone number/.test(alert)) throw new Error(`unexpected alert: ${alert}`);
       if (apiCalls !== 0) throw new Error(`expected no auth request, saw ${apiCalls}`);
       return `alert="${alert}" and 0 auth requests`;
+    });
+
+    await check("registration screen renders the sign-up form", async () => {
+      await goto("/register", "return !!document.querySelector('form');");
+      const text = await socket.evaluate("return document.body.innerText;");
+      if (!/Create your account/.test(text)) throw new Error(`unexpected registration copy: ${text.slice(0, 120)}`);
+      const apiCalls = await socket.evaluate(
+        "return performance.getEntriesByType('resource').filter((e) => e.name.includes('/auth/v1/')).length;"
+      );
+      if (apiCalls !== 0) throw new Error(`expected no auth request, saw ${apiCalls}`);
+      return "registration form rendered; 0 auth requests";
+    });
+
+    await check("refreshing the registration route keeps the form mounted", async () => {
+      await goto("/register", "return !!document.querySelector('form');");
+      await socket.send("Page.reload");
+      await socket.waitFor("return !!document.querySelector('form');", { timeout: 15000 });
+      const text = await socket.evaluate("return document.body.innerText;");
+      if (!/Create your account/.test(text)) throw new Error("registration form did not survive reload");
+      return "registration form survived reload";
     });
 
     await check("real keystrokes reach the controlled React inputs", async () => {
@@ -328,6 +348,20 @@ async function main() {
 
     await check("protected routes redirect an anonymous visitor to sign-in", async () => {
       await goto("/app/search", "return !!document.querySelector('#identifier');");
+      const path = await socket.evaluate("return location.pathname;");
+      if (path !== "/login") throw new Error(`expected /login, landed on ${path}`);
+      return "redirected to /login";
+    });
+
+    await check("developer hub route redirects an anonymous visitor to sign-in", async () => {
+      await goto("/app/developer", "return !!document.querySelector('#identifier');");
+      const path = await socket.evaluate("return location.pathname;");
+      if (path !== "/login") throw new Error(`expected /login, landed on ${path}`);
+      return "redirected to /login";
+    });
+
+    await check("demo mode route redirects an anonymous visitor to sign-in", async () => {
+      await goto("/app/demo", "return !!document.querySelector('#identifier');");
       const path = await socket.evaluate("return location.pathname;");
       if (path !== "/login") throw new Error(`expected /login, landed on ${path}`);
       return "redirected to /login";
@@ -418,6 +452,17 @@ async function main() {
       if (!probe.ok) throw new Error(`Supabase is unreachable from the page: ${probe.error}`);
       if (probe.status >= 500) throw new Error(`Supabase returned ${probe.status} for a probe request`);
       return `cross-origin fetch to ${supabaseUrl}/rest/v1/ resolved with ${probe.status}`;
+    });
+
+    await check("no failed subresource requests on the public routes", async () => {
+      await goto("/");
+      const badResponses = await socket.evaluate(`
+        return performance.getEntriesByType('resource')
+          .filter((e) => (e.responseStatus ?? 0) >= 400)
+          .map((e) => ({ name: e.name, status: e.responseStatus }));
+      `);
+      if (badResponses.length > 0) throw new Error(`unexpected failed subresource(s): ${JSON.stringify(badResponses)}`);
+      return "all subresource responses were successful";
     });
 
     await check("no uncaught console errors on the public routes", async () => {

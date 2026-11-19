@@ -31,7 +31,13 @@ export type IconName =
   | "droplet"
   | "moon"
   | "star"
-  | "code";
+  | "code"
+  | "mail"
+  | "phone"
+  | "calendar"
+  | "layout"
+  | "play"
+  | "flask";
 
 const PATHS: Record<IconName, string[]> = {
   home: ["M3 10.5 12 3l9 7.5", "M5.5 9.5V21h13V9.5", "M9.75 21v-6h4.5v6"],
@@ -69,6 +75,16 @@ const PATHS: Record<IconName, string[]> = {
     "M12 4.5l2.55 5.06 5.58.82-4.06 3.96.96 5.52-4.98-2.6-4.98 2.6.96-5.52L3.87 10.38l5.58-.82L12 4.5Z",
   ],
   code: ["M8 7 5 12l3 5", "M16 7l3 5-3 5"],
+  mail: ["M4 5h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z", "m4.5 7 7.5 6 7.5-6"],
+  phone: [
+    "M5 4h3.5l1.5 4.2-2 1.3a12 12 0 0 0 5 5l1.3-2L19 16.5V19a1 1 0 0 1-1 1A16.5 16.5 0 0 1 3 5a1 1 0 0 1 1-1Z",
+    "M8.5 6.5h.01",
+    "M15.5 6.5h.01",
+  ],
+  calendar: ["M8 3v4", "M16 3v4", "M3.5 10h17", "M5 9.5V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19V9.5", "M7 15h5"],
+  layout: ["M4.5 3.5h7v7h-7Z", "M12.5 3.5h7v7h-7Z", "M4.5 12.5h7v7h-7Z", "M12.5 12.5h7v7h-7Z"],
+  play: ["M7 4.5l12 7.5-12 7.5Z"],
+  flask: ["M9.5 2.5h5", "M10.5 2.5v6.5", "M8 9h8", "M9 9v9", "M11 9v9", "M6.5 17.5h11"],
 };
 
 export function Icon({

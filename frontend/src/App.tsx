@@ -52,6 +52,8 @@ const SessionsPage = lazy(() =>
 const TeacherGraphQLLabPage = lazy(() =>
   import("./pages/TeacherGraphQLLabPage").then((m) => ({ default: m.TeacherGraphQLLabPage }))
 );
+const DeveloperPage = lazy(() => import("./pages/DeveloperPage").then((m) => ({ default: m.DeveloperPage })));
+const DemoModePage = lazy(() => import("./pages/DemoModePage").then((m) => ({ default: m.DemoModePage })));
 
 /**
  * Shown while a route chunk is fetched. It is a labelled, centred spinner rather than a
@@ -91,7 +93,9 @@ export function App() {
             <Route path="reports" element={<ReportsPage />} />
             <Route path="about" element={<AboutPage />} />
             <Route path="feedback" element={<FeedbackPage />} />
+            <Route path="developer" element={<DeveloperPage />} />
             <Route path="developer/graphql" element={<TeacherGraphQLLabPage />} />
+            <Route path="demo" element={<DemoModePage />} />
           </Route>
 
           <Route path="/app/*" element={<Navigate to="/app" replace />} />
